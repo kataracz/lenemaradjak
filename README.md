@@ -125,3 +125,15 @@ npm run lint
 ```
 
 Fix lint issues by updating offending code in `src/` or by adjusting config only when the issue is intentional or part of a third-party integration. If lint reports a rule violation in the UI components, focus first on the files you changed or the top-level widgets.
+
+# Testing
+
+This project includes a very small test suite powered by `vitest`.
+
+Run the tests with:
+
+```bash
+npm test
+```
+
+The current test file verifies the shared `cn` utility in `src/lib/utils.ts`.
