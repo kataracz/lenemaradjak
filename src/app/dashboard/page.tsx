@@ -66,14 +66,6 @@ export default function Page() {
     return [publisherFilter];
   }, [publisherFilter]);
 
-  const selectedPublishers = React.useMemo(
-    () =>
-      publishers.filter((publisher) =>
-        filteredPublisherIds.includes(publisher.id),
-      ),
-    [filteredPublisherIds],
-  );
-
   const filteredPublisherOptions = React.useMemo(
     () => [{ id: "all", name: "Összes kiadó" }, ...publishers],
     [],
@@ -120,7 +112,9 @@ export default function Page() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setPublisherFilter("all")}
+                onClick={() => {
+                  setPublisherFilter("all");
+                }}
               >
                 Összes megjelenítése
               </Button>

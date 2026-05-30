@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { fetchYouTubeVideos } from "@/lib/fetchers/youtube";
 import { publishers } from "@/lib/publisher-config";
+import useCooldown from "@/hooks/useCooldown";
 import type { FeedItem } from "@/types/dashboard";
 
 export function YoutubeVideosWidget({
@@ -39,15 +40,31 @@ export function YoutubeVideosWidget({
   }, [filteredPublishers]);
 
   React.useEffect(() => {
-    void loadVideos();
+    const timerId = window.setTimeout(() => {
+      void loadVideos();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadVideos]);
+
+  const { disabled: refreshDisabled, trigger: triggerRefresh } =
+    useCooldown(10000);
 
   return (
     <DashboardCard
       title="Legfrissebb videók"
       description="A kiválasztott kiadók legújabb feltöltései."
       actions={
-        <Button variant="outline" size="sm" onClick={() => void loadVideos()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (triggerRefresh()) void loadVideos();
+          }}
+          disabled={refreshDisabled}
+        >
           Frissítés
         </Button>
       }

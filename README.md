@@ -113,3 +113,15 @@ The codebase uses the following naming conventions:
 - Constants and environment variables: `UPPER_SNAKE_CASE` for fixed values and `VITE_` prefixed env keys.
 
 These conventions help keep filenames, component names, and variables consistent across the app.
+
+# Linting
+
+This project uses ESLint to enforce TypeScript and React patterns.
+
+Run lint checks with:
+
+```bash
+npm run lint
+```
+
+Fix lint issues by updating offending code in `src/` or by adjusting config only when the issue is intentional or part of a third-party integration. If lint reports a rule violation in the UI components, focus first on the files you changed or the top-level widgets.

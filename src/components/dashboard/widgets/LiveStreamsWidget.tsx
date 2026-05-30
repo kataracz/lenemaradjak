@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { fetchYouTubeLiveStreams } from "@/lib/fetchers/youtube";
 import { publishers } from "@/lib/publisher-config";
+import useCooldown from "@/hooks/useCooldown";
 import type { FeedItem } from "@/types/dashboard";
 
 export function LiveStreamsWidget({
@@ -49,8 +50,17 @@ export function LiveStreamsWidget({
   }, [filteredPublishers]);
 
   React.useEffect(() => {
-    void loadLiveStreams();
+    const timerId = window.setTimeout(() => {
+      void loadLiveStreams();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadLiveStreams]);
+
+  const { disabled: refreshDisabled, trigger: triggerRefresh } =
+    useCooldown(10000);
 
   return (
     <DashboardCard
@@ -60,7 +70,10 @@ export function LiveStreamsWidget({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => void loadLiveStreams()}
+          onClick={() => {
+            if (triggerRefresh()) void loadLiveStreams();
+          }}
+          disabled={refreshDisabled}
         >
           Frissítés
         </Button>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { fetchRSSFeed } from "@/lib/fetchers/rss";
+import useCooldown from "@/hooks/useCooldown";
 import { publishers } from "@/lib/publisher-config";
 import type { FeedItem } from "@/types/dashboard";
 
@@ -67,7 +68,7 @@ export function PodcastsWidget({ publisherIds }: { publisherIds: string[] }) {
           setError(
             failedFeeds.length === 1
               ? "Egy RSS csatorna nem töltődött be. A sikeres epizódok továbbra is megjelennek."
-              : `${failedFeeds.length} RSS csatorna nem töltődött be. A sikeres epizódok továbbra is megjelennek.`,
+              : `${String(failedFeeds.length)} RSS csatorna nem töltődött be. A sikeres epizódok továbbra is megjelennek.`,
           );
         }
       } else if (failedFeeds.length > 0) {
@@ -84,15 +85,31 @@ export function PodcastsWidget({ publisherIds }: { publisherIds: string[] }) {
   }, [filteredPublishers]);
 
   React.useEffect(() => {
-    void loadPodcasts();
+    const timerId = window.setTimeout(() => {
+      void loadPodcasts();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadPodcasts]);
+
+  const { disabled: refreshDisabled, trigger: triggerRefresh } =
+    useCooldown(10000);
 
   return (
     <DashboardCard
       title="Legfrissebb podcastok"
       description="A kiválasztott kiadók legújabb epizódjai."
       actions={
-        <Button variant="outline" size="sm" onClick={() => void loadPodcasts()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (triggerRefresh()) void loadPodcasts();
+          }}
+          disabled={refreshDisabled}
+        >
           Frissítés
         </Button>
       }
