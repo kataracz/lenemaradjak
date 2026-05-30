@@ -101,3 +101,15 @@ Users can:
 - (?) One widget to show latest 5 lives from all publishers
 - One widget to monitor Magyar Péter’s videos (youtube, youtube lives, youtube shorts)
 - One widget to show 3 upcoming lives, alert if there are multiple lives coming up at the same time
+
+# Naming conventions
+
+The codebase uses the following naming conventions:
+
+- Shared UI primitives and helper files: `kebab-case` file names.
+- Page and widget component files: `PascalCase` file names.
+- React components and hooks: `PascalCase` for component names, `camelCase` for hook names.
+- Variables and functions: `camelCase` for local values and exported helpers.
+- Constants and environment variables: `UPPER_SNAKE_CASE` for fixed values and `VITE_` prefixed env keys.
+
+These conventions help keep filenames, component names, and variables consistent across the app.

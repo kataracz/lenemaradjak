@@ -79,21 +79,6 @@ export default function Page() {
     [],
   );
 
-  const articleFeedCount = selectedPublishers.filter(
-    (publisher) => publisher.articleFeedUrl,
-  ).length;
-  const podcastFeedCount = selectedPublishers.filter(
-    (publisher) => publisher.podcastFeedUrl,
-  ).length;
-  const youtubeSourceCount = selectedPublishers.filter((publisher) =>
-    Boolean(
-      publisher.youtubeChannelId ||
-      publisher.youtubeChannelHandle ||
-      publisher.youtubeRssFeedUrl,
-    ),
-  ).length;
-  const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
-
   const { width, containerRef, mounted } = useContainerWidth();
 
   const handleLayoutChange = (
@@ -139,37 +124,6 @@ export default function Page() {
               >
                 Összes megjelenítése
               </Button>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-3xl border border-muted/10 bg-card p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">
-                Kiválasztott kiadók
-              </p>
-              <p className="mt-2 text-3xl font-semibold">
-                {selectedPublishers.length}
-              </p>
-            </div>
-            <div className="rounded-3xl border border-muted/10 bg-card p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">
-                Elérhető cikkforrások
-              </p>
-              <p className="mt-2 text-3xl font-semibold">{articleFeedCount}</p>
-            </div>
-            <div className="rounded-3xl border border-muted/10 bg-card p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">
-                Elérhető podcast források
-              </p>
-              <p className="mt-2 text-3xl font-semibold">{podcastFeedCount}</p>
-            </div>
-            <div className="rounded-3xl border border-muted/10 bg-card p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">YouTube források</p>
-              <p className="mt-2 text-3xl font-semibold">
-                {youtubeSourceCount}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {hasYouTubeApiKey ? "API kulcs elérhető" : "API kulcs hiányzik"}
-              </p>
             </div>
           </div>
           <div
