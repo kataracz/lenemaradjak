@@ -137,3 +137,55 @@ npm test
 ```
 
 The current test file verifies the shared `cn` utility in `src/lib/utils.ts`.
+
+# Development proxy server
+
+The app uses a local proxy for some RSS and remote feed hosts in development. The proxy implementation is in `server/proxy-server.js`, and it avoids browser CORS restrictions for the supported feed hosts.
+
+When to use the proxy
+
+- Use the proxy when a feed or upstream resource does not include `Access-Control-Allow-Origin` headers (browser will block direct fetches). The browser-based RSS fetcher routes known hosts to `/api/proxy`.
+
+Run locally
+
+Start the proxy server in one terminal:
+
+```bash
+npm run start:server
+```
+
+Then run the Vite dev server in another terminal:
+
+```bash
+npm run dev
+```
+
+Or run both together:
+
+```bash
+npm run dev:all
+```
+
+If the proxy server is not running, some RSS feed requests may fail in the browser.
+
+Security & development notes
+
+- Keep the proxy allowlist small (see `server/proxy-server.js` `ALLOWED_HOSTS`).
+- Use rate limiting and timeouts to avoid abuse (the local server includes `express-rate-limit` and an AbortController timeout).
+- Cache upstream responses to reduce load; the example uses an in-memory cache (short TTL). For production, prefer a shared cache (Redis or CDN edge cache).
+- The proxy currently sets permissive CORS headers for development; prefer locking `Access-Control-Allow-Origin` to your app origins in production.
+
+Privacy, legal, and operational reminders
+
+- The proxy will see full URLs and response content — do not proxy private or authenticated URLs unless you handle credentials securely.
+- Review upstream sites' Terms of Service and `robots.txt` before scraping or redistributing content; prefer official RSS/APIs when available.
+
+Implementation notes (repo locations)
+
+- Proxy server: `server/proxy-server.js`
+- Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts to `/api/proxy`).
+
+Next steps to consider
+
+- Replace in-memory cache with Redis or use a CDN for production.
+- Harden CORS headers and add authentication/origin checks if exposing the proxy publicly.

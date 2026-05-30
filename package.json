@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start:server": "node server/proxy-server.js",
+    "dev:all": "npm run start:server & npm run dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
