@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { loadDashboardLayouts, saveDashboardLayouts } from "@/lib/persistence";
 import type { DashboardLayouts } from "@/types/dashboard";

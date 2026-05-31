@@ -1,7 +1,4 @@
-"use client";
-
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -54,6 +51,7 @@ const defaultLayouts: DashboardLayouts = {
 
 const breakpoints = { lg: 1280, md: 996, sm: 768, xs: 480, xxs: 0 };
 const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
+const publisherOptions = [{ id: "all", name: "Összes kiadó" }, ...publishers];
 
 export default function Page() {
   const { layouts, setLayouts } = useDashboardPersistence(defaultLayouts);
@@ -66,15 +64,10 @@ export default function Page() {
     return [publisherFilter];
   }, [publisherFilter]);
 
-  const filteredPublisherOptions = React.useMemo(
-    () => [{ id: "all", name: "Összes kiadó" }, ...publishers],
-    [],
-  );
-
   const { width, containerRef, mounted } = useContainerWidth();
 
   const handleLayoutChange = (
-    _currentLayout: Layout,
+    _currentLayout: Layout[],
     allLayouts: DashboardLayouts,
   ) => {
     setLayouts(allLayouts);
@@ -91,34 +84,23 @@ export default function Page() {
                 Mi történik? Mit csinál Magyar Péter?
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Select
-                value={publisherFilter}
-                onValueChange={setPublisherFilter}
-              >
-                <SelectTrigger className="w-56" size="sm">
-                  <SelectValue placeholder="Válassz kiadót" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {filteredPublisherOptions.map((publisher) => (
-                      <SelectItem key={publisher.id} value={publisher.id}>
-                        {publisher.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setPublisherFilter("all");
-                }}
-              >
-                Összes megjelenítése
-              </Button>
-            </div>
+            <Select
+              value={publisherFilter}
+              onValueChange={setPublisherFilter}
+            >
+              <SelectTrigger className="w-56" size="sm">
+                <SelectValue placeholder="Válassz kiadót" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {publisherOptions.map((publisher) => (
+                    <SelectItem key={publisher.id} value={publisher.id}>
+                      {publisher.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div
             ref={containerRef}

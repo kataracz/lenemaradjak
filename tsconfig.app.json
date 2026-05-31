@@ -21,6 +21,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "6.0",
+    "resolveJsonModule": true,
 
     "baseUrl": ".",
     "paths": {

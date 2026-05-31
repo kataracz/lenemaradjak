@@ -11,6 +11,6 @@ describe("cn utility", () => {
   });
 
   it("ignores falsy values", () => {
-    expect(cn("foo", false && "bar")).toBe("foo");
+    expect(cn("foo", false)).toBe("foo");
   });
 });

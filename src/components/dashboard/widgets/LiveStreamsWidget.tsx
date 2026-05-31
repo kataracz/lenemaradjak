@@ -1,29 +1,17 @@
-"use client";
-
 import * as React from "react";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { DashboardCard } from "@/components/dashboard/widget-card";
+import { FeedItemCard } from "@/components/dashboard/feed-item-card";
 import { fetchYouTubeLiveStreams } from "@/lib/fetchers/youtube";
-import { publishers } from "@/lib/publisher-config";
-import useCooldown from "@/hooks/useCooldown";
-import type { FeedItem } from "@/types/dashboard";
+import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 
 export function LiveStreamsWidget({
   publisherIds,
 }: {
   publisherIds: string[];
 }) {
-  const [items, setItems] = React.useState<FeedItem[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const filteredPublishers = React.useMemo(
-    () => publishers.filter((publisher) => publisherIds.includes(publisher.id)),
-    [publisherIds],
-  );
+  const { items, loading, error, refresh, refreshDisabled, filteredPublishers } =
+    useYouTubeFeed(publisherIds, fetchYouTubeLiveStreams);
 
   const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
   const hasChannelHandles = React.useMemo(
@@ -35,33 +23,6 @@ export function LiveStreamsWidget({
     [filteredPublishers],
   );
 
-  const loadLiveStreams = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await fetchYouTubeLiveStreams(filteredPublishers, 5);
-      setItems(results);
-    } catch (err) {
-      setError((err as Error).message);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filteredPublishers]);
-
-  React.useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      void loadLiveStreams();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timerId);
-    };
-  }, [loadLiveStreams]);
-
-  const { disabled: refreshDisabled, trigger: triggerRefresh } =
-    useCooldown(10000);
-
   return (
     <DashboardCard
       title="Élő közvetítések"
@@ -70,9 +31,7 @@ export function LiveStreamsWidget({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            if (triggerRefresh()) void loadLiveStreams();
-          }}
+          onClick={refresh}
           disabled={refreshDisabled}
         >
           Frissítés
@@ -93,33 +52,16 @@ export function LiveStreamsWidget({
       ) : items.length ? (
         <div className="grid gap-4">
           {items.map((item) => (
-            <article key={item.id} className="grid gap-2 rounded-lg border p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-base font-semibold underline-offset-4 transition hover:underline"
-                  >
-                    {item.title}
-                  </a>
-                  <p className="text-sm text-muted-foreground">
-                    {item.channelName ?? item.source}
-                  </p>
+            <FeedItemCard
+              key={item.id}
+              item={item}
+              footer={
+                <div className="grid gap-2 text-sm text-muted-foreground">
+                  <span>Élőben</span>
+                  <span>{new Date(item.publishedAt).toLocaleString()}</span>
                 </div>
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  strokeWidth={2}
-                  className="size-5 text-muted-foreground"
-                />
-              </div>
-              <Separator />
-              <div className="grid gap-2 text-sm text-muted-foreground">
-                <span>Élőben</span>
-                <span>{new Date(item.publishedAt).toLocaleString()}</span>
-              </div>
-            </article>
+              }
+            />
           ))}
         </div>
       ) : !hasYouTubeApiKey || !hasChannelHandles ? (

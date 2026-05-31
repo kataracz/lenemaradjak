@@ -1,5 +1,3 @@
-"use client";
-
 import { type ReactNode } from "react";
 import {
   Card,
@@ -26,7 +24,7 @@ export function DashboardCard({
 }: DashboardCardProps) {
   return (
     <Card className={className ?? "h-full"}>
-      <CardHeader className="items-start gap-3">
+      <CardHeader className="flex-row items-start justify-between gap-3">
         <div>
           <CardTitle>{title}</CardTitle>
           {description ? (

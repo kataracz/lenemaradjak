@@ -6,14 +6,13 @@ export type DashboardWidgetType =
   | "podcasts"
   | "articles";
 
-export type DashboardLayouts = ResponsiveLayouts<string>;
+export type DashboardLayouts = ResponsiveLayouts;
 
 export interface PublisherConfig {
   id: string;
   name: string;
   articleFeedUrl?: string;
   podcastFeedUrl?: string;
-  youtubeRssFeedUrl?: string;
   youtubeChannelId?: string;
   youtubeChannelHandle?: string;
 }
@@ -28,5 +27,4 @@ export interface FeedItem {
   thumbnailUrl?: string;
   channelName?: string;
   isLive?: boolean;
-  viewCount?: number;
 }

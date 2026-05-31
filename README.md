@@ -128,7 +128,7 @@ Fix lint issues by updating offending code in `src/` or by adjusting config only
 
 # Testing
 
-This project includes a very small test suite powered by `vitest`.
+This project uses [Vitest](https://vitest.dev/) with jsdom for unit and hook tests.
 
 Run the tests with:
 
@@ -136,7 +136,23 @@ Run the tests with:
 npm test
 ```
 
-The current test file verifies the shared `cn` utility in `src/lib/utils.ts`.
+Current coverage:
+
+| File                                        | What is tested                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/lib/utils.test.ts`                     | `cn()` class-name utility                                                                               |
+| `src/lib/persistence.test.ts`               | `loadDashboardLayouts` / `saveDashboardLayouts` (localStorage round-trip, malformed JSON, quota errors) |
+| `src/lib/fetchers/rss.test.ts`              | RSS feed fetcher — XML parsing, proxy routing, cache hits, inflight dedup, HTTP errors                  |
+| `src/hooks/useCooldown.test.ts`             | Cooldown hook — initial state, trigger, double-trigger, expiry, unmount cleanup                         |
+| `src/hooks/useDashboardPersistence.test.ts` | Dashboard layout persistence hook — empty storage, save/load round-trip, corrupted data                 |
+
+# TypeScript
+
+Run the type checker with:
+
+```bash
+npx tsc --noEmit
+```
 
 # Development proxy server
 
@@ -168,24 +184,38 @@ npm run dev:all
 
 If the proxy server is not running, some RSS feed requests may fail in the browser.
 
-Security & development notes
+Security & configuration
 
-- Keep the proxy allowlist small (see `server/proxy-server.js` `ALLOWED_HOSTS`).
-- Use rate limiting and timeouts to avoid abuse (the local server includes `express-rate-limit` and an AbortController timeout).
-- Cache upstream responses to reduce load; the example uses an in-memory cache (short TTL). For production, prefer a shared cache (Redis or CDN edge cache).
-- The proxy currently sets permissive CORS headers for development; prefer locking `Access-Control-Allow-Origin` to your app origins in production.
+- The proxy binds to `127.0.0.1` only — it is not reachable from outside the machine.
+- CORS is restricted to the frontend origin via the `ALLOWED_ORIGIN` environment variable (default: `http://localhost:5173`). Set this in your `.env` file:
+  ```
+  ALLOWED_ORIGIN=http://localhost:5173
+  ```
+- The `ALLOWED_HOSTS` allowlist in `server/proxy-server.js` (kept in sync with `src/lib/proxy-hosts.ts`) restricts which upstream domains the proxy will fetch from. Keep this list small.
+- Rate limiting (`express-rate-limit`, per IP) and a 10-second AbortController timeout are in place.
+- Responses larger than 5 MB are rejected before buffering.
+- The proxy sends conditional `If-Modified-Since` / `If-None-Match` headers on repeat requests, reducing bandwidth when feeds haven't changed.
+- The proxy identifies itself to upstream servers via a descriptive `User-Agent` header.
 
 Privacy, legal, and operational reminders
 
 - The proxy will see full URLs and response content — do not proxy private or authenticated URLs unless you handle credentials securely.
 - Review upstream sites' Terms of Service and `robots.txt` before scraping or redistributing content; prefer official RSS/APIs when available.
+- All configured publishers use publicly available RSS feeds and the official YouTube API; no HTML scraping is performed.
+
+Production deployment
+
+Run the proxy server behind a reverse proxy (nginx, caddy, etc.) that handles TLS and external traffic. The Express server only needs to be reachable on loopback:
+
+1. Deploy the compiled Vite frontend (static files) to your hosting provider.
+2. Run `node server/proxy-server.js` on the same host (or a trusted backend host).
+3. Configure the reverse proxy to forward `/api/proxy` requests to `http://127.0.0.1:3001`.
+4. Set `ALLOWED_ORIGIN` in the server environment to your frontend's public URL (e.g. `https://lenemaradjak.example.com`).
+
+For high-traffic deployments consider replacing the in-memory cache with Redis or a CDN edge cache.
 
 Implementation notes (repo locations)
 
 - Proxy server: `server/proxy-server.js`
 - Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts to `/api/proxy`).
-
-Next steps to consider
-
-- Replace in-memory cache with Redis or use a CDN for production.
-- Harden CORS headers and add authentication/origin checks if exposing the proxy publicly.
+- Shared host allowlist: `src/lib/proxy-hosts.ts` (imported by `rss.ts`; manually kept in sync with `server/proxy-server.js`).

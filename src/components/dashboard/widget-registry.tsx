@@ -1,5 +1,3 @@
-"use client";
-
 import type { ComponentType } from "react";
 import type { DashboardWidgetType } from "@/types/dashboard";
 import { ArticlesWidget } from "@/components/dashboard/widgets/ArticlesWidget";
