@@ -1,4 +1,5 @@
 import type { FeedItem, PublisherConfig } from "@/types/dashboard";
+import { PROXY_HOSTS } from "@/lib/proxy-hosts";
 
 const apiKey: string | undefined = import.meta.env.VITE_YOUTUBE_API_KEY as
   | string
@@ -125,6 +126,15 @@ const storeCachedStreams = (channelId: string, items: FeedItem[]) => {
   saveToCache(streamResultCache, getStreamCacheKey(channelId), YOUTUBE_RESULT_TTL_MS, { items });
 };
 
+// ── Proxy-aware fetch ────────────────────────────────────────────────────────
+
+async function proxyFetch(url: URL): Promise<Response> {
+  if (typeof window !== "undefined" && PROXY_HOSTS.has(url.hostname)) {
+    return fetch(`/api/proxy?url=${encodeURIComponent(url.toString())}`);
+  }
+  return fetch(url.toString());
+}
+
 // ── Channel handle → ID resolution ───────────────────────────────────────────
 
 const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "");
@@ -156,7 +166,7 @@ async function resolveYouTubeChannelId(
     searchUrl.searchParams.set("maxResults", "1");
     searchUrl.searchParams.set("key", apiKey);
 
-    const response = await fetch(searchUrl.toString());
+    const response = await proxyFetch(searchUrl);
     if (!response.ok) return undefined;
 
     const result = await response.json() as { items?: { id?: { channelId?: string } }[] };
@@ -171,7 +181,7 @@ async function resolveYouTubeChannelId(
     usernameUrl.searchParams.set("forUsername", query);
     usernameUrl.searchParams.set("key", apiKey);
 
-    const usernameResponse = await fetch(usernameUrl.toString());
+    const usernameResponse = await proxyFetch(usernameUrl);
     if (!usernameResponse.ok) return undefined;
 
     const usernameResult = await usernameResponse.json() as { items?: { id?: string }[] };
@@ -242,7 +252,7 @@ function fetchChannelVideos(
     url.searchParams.set("maxResults", "10");
     url.searchParams.set("key", apiKey);
 
-    const response = await fetch(url.toString());
+    const response = await proxyFetch(url);
     if (!response.ok) {
       throw new Error(`YouTube playlistItems API failed: ${String(response.status)}`);
     }
@@ -298,7 +308,7 @@ function fetchChannelLiveStreams(
     url.searchParams.set("maxResults", "10");
     url.searchParams.set("key", apiKey);
 
-    const response = await fetch(url.toString());
+    const response = await proxyFetch(url);
     if (!response.ok) {
       throw new Error(`YouTube Live API failed: ${String(response.status)}`);
     }

@@ -33,7 +33,7 @@ export function DashboardCard({
         </div>
         {actions}
       </CardHeader>
-      <CardContent className="grid gap-4 px-0 pb-0 pt-2">
+      <CardContent className="flex-1 overflow-y-auto grid gap-4 px-0 pb-0 pt-2">
         {children}
       </CardContent>
     </Card>
