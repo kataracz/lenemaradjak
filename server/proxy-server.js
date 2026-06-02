@@ -15,6 +15,29 @@ const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 const MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
 const RESPONSE_TOO_LARGE = "Upstream response too large";
 
+const PER_HOST_WINDOWS = new Map(); // hostname -> number[] (upstream request timestamps)
+const PER_HOST_LIMITS = {
+  "googleapis.com": { max: 10, windowMs: 60_000 },
+  default: { max: 15, windowMs: 60_000 },
+};
+
+function checkPerHostRateLimit(hostname) {
+  const { max, windowMs } =
+    PER_HOST_LIMITS[hostname] ?? PER_HOST_LIMITS.default;
+  const now = Date.now();
+  const cutoff = now - windowMs;
+  const timestamps = PER_HOST_WINDOWS.get(hostname) ?? [];
+  const recent = timestamps.filter((t) => t > cutoff);
+  if (recent.length >= max) {
+    const retryAfter = Math.ceil((recent[0] + windowMs - now) / 1000);
+    PER_HOST_WINDOWS.set(hostname, recent);
+    return { allowed: false, retryAfter };
+  }
+  recent.push(now);
+  PER_HOST_WINDOWS.set(hostname, recent);
+  return { allowed: true };
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of cache) {
@@ -74,6 +97,14 @@ app.get("/api/proxy", async (req, res) => {
     return res.status(502).json({ error: "Failed to fetch upstream" });
   }
 
+  const { allowed, retryAfter } = checkPerHostRateLimit(target.hostname);
+  if (!allowed) {
+    return res
+      .status(429)
+      .set("Retry-After", String(retryAfter))
+      .json({ error: "Too many upstream requests for this host", retryAfter });
+  }
+
   const fetchPromise = (async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -82,7 +113,7 @@ app.get("/api/proxy", async (req, res) => {
       response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          "User-Agent": `Lenemaradjak/1.0 (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
+          "User-Agent": `Lenemaradjak/1.0 WIP RSS Reader  (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
           ...(cached?.lastModified
             ? { "If-Modified-Since": cached.lastModified }
             : {}),
