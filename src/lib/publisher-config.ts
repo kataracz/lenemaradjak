@@ -11,12 +11,12 @@ export const publishers: PublisherConfig[] = [
   },
   {
     id: "partizan",
-    name: "Partiizán",
+    name: "Partizán",
     // Partizán podcasts (direct)
     podcastFeedUrl: "https://media.rss.com/partizanpodcast/feed.xml",
     // Alternate Partizán podcast feed
     // podcastFeedUrlSecondary: "https://media.rss.com/partizan-podcast/feed.xml",
-    youtubeChannelHandle: "@Partiz%C3%A1nm%C3%A9dia",
+    youtubeChannelHandle: "@Partizánmédia",
   },
   {
     id: "kontroll",
@@ -45,15 +45,12 @@ export const publishers: PublisherConfig[] = [
   {
     id: "24hu",
     name: "24.hu",
-    // No direct article RSS provided yet
     youtubeChannelHandle: "@24ponthu",
   },
   {
     id: "444",
     name: "444",
     articleFeedUrl: "https://444.hu/feed/",
-    podcastFeedUrl:
-      "https://www.omnycontent.com/d/playlist/d8df8f59-7dc7-4c59-be78-aea00114ae64/5643256c-50ca-4b83-bd76-aead00d561e1/31d0efea-4591-440a-8088-aead00d561fd/podcast.rss",
     youtubeChannelHandle: "@negynegynegy",
   },
   {
