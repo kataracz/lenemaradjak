@@ -5,11 +5,13 @@ import PROXY_HOSTS_LIST from "../src/lib/proxy-hosts.json" with { type: "json" }
 const app = express();
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
+const DEV_CONTACT = process.env.DEV_CONTACT;
 
 const ALLOWED_HOSTS = new Set(PROXY_HOSTS_LIST);
 
 const cache = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 2; // 2 minutes
+const inflight = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 const MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
 const RESPONSE_TOO_LARGE = "Upstream response too large";
 
@@ -54,40 +56,57 @@ app.get("/api/proxy", async (req, res) => {
   const cacheKey = url;
   const now = Date.now();
   const cached = cache.get(cacheKey);
+
   if (cached && cached.expires > now) {
     res.set("Content-Type", cached.contentType);
     return res.status(200).send(cached.body);
   }
 
-  try {
+  // Deduplicate concurrent upstream requests for the same URL. If another
+  // request is already in flight, wait for it to finish and serve from cache.
+  if (inflight.has(cacheKey)) {
+    await inflight.get(cacheKey);
+    const fresh = cache.get(cacheKey);
+    if (fresh && fresh.expires > Date.now()) {
+      res.set("Content-Type", fresh.contentType);
+      return res.status(200).send(fresh.body);
+    }
+    return res.status(502).json({ error: "Failed to fetch upstream" });
+  }
+
+  const fetchPromise = (async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-
-    const conditionalHeaders = {};
-    if (cached?.lastModified)
-      conditionalHeaders["If-Modified-Since"] = cached.lastModified;
-    if (cached?.etag) conditionalHeaders["If-None-Match"] = cached.etag;
-
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "Lenemaradjak/1.0 RSS Reader (personal aggregator)",
-        ...conditionalHeaders,
-      },
-    });
-    clearTimeout(timeout);
+    let response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": `Lenemaradjak/1.0 (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
+          ...(cached?.lastModified
+            ? { "If-Modified-Since": cached.lastModified }
+            : {}),
+          ...(cached?.etag ? { "If-None-Match": cached.etag } : {}),
+        },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (response.status === 304 && cached) {
       cached.expires = Date.now() + CACHE_TTL_MS;
-      res.set("Content-Type", cached.contentType);
-      return res.status(200).send(cached.body);
+      return {
+        status: 200,
+        contentType: cached.contentType,
+        body: cached.body,
+      };
     }
 
-    const contentLength = Number(
-      response.headers.get("content-length") ?? 0,
-    );
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
     if (contentLength > MAX_BODY_BYTES) {
-      return res.status(413).json({ error: RESPONSE_TOO_LARGE });
+      const err = new Error(RESPONSE_TOO_LARGE);
+      err.statusCode = 413;
+      throw err;
     }
 
     const contentType =
@@ -95,11 +114,12 @@ app.get("/api/proxy", async (req, res) => {
     const body = await response.arrayBuffer();
 
     if (body.byteLength > MAX_BODY_BYTES) {
-      return res.status(413).json({ error: RESPONSE_TOO_LARGE });
+      const err = new Error(RESPONSE_TOO_LARGE);
+      err.statusCode = 413;
+      throw err;
     }
 
     const buffer = Buffer.from(body);
-
     cache.set(cacheKey, {
       expires: Date.now() + CACHE_TTL_MS,
       contentType,
@@ -112,14 +132,30 @@ app.get("/api/proxy", async (req, res) => {
       cache.delete(first);
     }
 
+    return { status: response.status, contentType, body: buffer };
+  })();
+
+  // Store a never-rejecting version so waiters can safely await it.
+  inflight.set(
+    cacheKey,
+    fetchPromise.catch(() => {}),
+  );
+
+  try {
+    const { status, contentType, body } = await fetchPromise;
     res.set("Content-Type", contentType);
-    return res.status(response.status).send(buffer);
+    return res.status(status).send(body);
   } catch (err) {
     if (err.name === "AbortError") {
       return res.status(504).json({ error: "Upstream request timed out" });
     }
+    if (err.statusCode === 413) {
+      return res.status(413).json({ error: RESPONSE_TOO_LARGE });
+    }
     console.error("Upstream fetch failed:", err);
     return res.status(502).json({ error: "Failed to fetch upstream" });
+  } finally {
+    inflight.delete(cacheKey);
   }
 });
 
