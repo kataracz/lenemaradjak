@@ -4,14 +4,24 @@ import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
 import { fetchYouTubeLiveStreams } from "@/lib/fetchers/youtube";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useVideoPlayer } from "@/contexts/useVideoPlayer";
 
 export function LiveStreamsWidget({
   publisherIds,
+  onHasContent,
 }: {
   publisherIds: string[];
+  onHasContent?: (hasContent: boolean) => void;
 }) {
-  const { items, loading, error, refresh, refreshDisabled, filteredPublishers } =
-    useYouTubeFeed(publisherIds, fetchYouTubeLiveStreams);
+  const {
+    items,
+    loading,
+    error,
+    refresh,
+    refreshDisabled,
+    filteredPublishers,
+  } = useYouTubeFeed(publisherIds, fetchYouTubeLiveStreams);
+  const { setCurrentVideo } = useVideoPlayer();
 
   const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
   const hasChannelHandles = React.useMemo(
@@ -23,10 +33,13 @@ export function LiveStreamsWidget({
     [filteredPublishers],
   );
 
+  React.useEffect(() => {
+    onHasContent?.(items.length > 0 || loading || error !== null);
+  }, [items.length, loading, error, onHasContent]);
+
   return (
     <DashboardCard
-      title="Élő közvetítések"
-      description="Élő vagy közelgő adások a kiválasztott kiadóktól, ha a YouTube API elérhető."
+      title="Élők"
       actions={
         <Button
           variant="outline"
@@ -50,11 +63,14 @@ export function LiveStreamsWidget({
           <div>{error}</div>
         </div>
       ) : items.length ? (
-        <div className="grid gap-4">
+        <div className="divide-y divide-border/60">
           {items.map((item) => (
             <FeedItemCard
               key={item.id}
               item={item}
+              onPlay={() => {
+                setCurrentVideo(item);
+              }}
               footer={
                 <div className="grid gap-2 text-sm text-muted-foreground">
                   <span>Élőben</span>

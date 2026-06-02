@@ -3,6 +3,7 @@ import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
 import { fetchYouTubeVideos } from "@/lib/fetchers/youtube";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useVideoPlayer } from "@/contexts/useVideoPlayer";
 
 export function YoutubeVideosWidget({
   publisherIds,
@@ -13,11 +14,11 @@ export function YoutubeVideosWidget({
     publisherIds,
     fetchYouTubeVideos,
   );
+  const { setCurrentVideo } = useVideoPlayer();
 
   return (
     <DashboardCard
-      title="Legfrissebb videók"
-      description="A kiválasztott kiadók legújabb feltöltései."
+      title="Videók"
       actions={
         <Button
           variant="outline"
@@ -39,12 +40,15 @@ export function YoutubeVideosWidget({
           <div>{error}</div>
         </div>
       ) : items.length ? (
-        <div className="grid gap-4">
+        <div className="divide-y divide-border/60">
           {items.map((item) => (
             <FeedItemCard
               key={item.id}
               item={item}
               descriptionFallback="Nincs elérhető leírás."
+              onPlay={() => {
+                setCurrentVideo(item);
+              }}
               footer={
                 <div className="flex flex-row flex-wrap gap-2 text-xs text-muted-foreground">
                   <span>{new Date(item.publishedAt).toLocaleString()}</span>

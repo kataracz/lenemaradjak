@@ -1,12 +1,15 @@
 # Setup
 
-This project uses React + TypeScript + Vite, shadcn + Tailwind for styling, and react-grid-layout for the dashboard's widget layout.
+This project uses React + TypeScript + Vite, shadcn + Tailwind for styling, and
+react-grid-layout for the dashboard's widget layout.
 
 React Compiler is enabled.
 
 # About
 
-This is a simple, basic dashboard with widgets to make keeping up with Hungarian politics easier by collecting latest news and interviews by key independent publishers in one page.
+This is a simple, basic dashboard with widgets to make keeping up with Hungarian
+politics easier by collecting latest news and interviews by key independent
+publishers in one page.
 
 The dashboard monitors:
 
@@ -34,7 +37,8 @@ The dashboard monitors:
 
 - Telex Belföld: https://telex.hu/rss/mstag/belfold
 - Direkt36: https://www.direkt36.hu/feed/
-- Telex (Direkt36 filter): https://telex.hu/rss/archivum?filters=%7B%22superTagSlugs%22%3A%5B%22direkt36%22%5D%2C%22parentId%22%3A%5B%22null%22%5D%7D&perPage=10
+- Telex (Direkt36 filter):
+  https://telex.hu/rss/archivum?filters=%7B%22superTagSlugs%22%3A%5B%22direkt36%22%5D%2C%22parentId%22%3A%5B%22null%22%5D%7D&perPage=10
 - Válasz Online: https://www.valaszonline.hu/feed/
 - Magyar Hang: https://magyarhang.org/feed/
 - 444: https://444.hu/feed/
@@ -43,18 +47,18 @@ The dashboard monitors:
 
 - Partizán podcast: https://media.rss.com/partizanpodcast/feed.xml
 - Partizán podcast (alt): https://media.rss.com/partizan-podcast/feed.xml
-- 444 podcast: https://www.omnycontent.com/d/playlist/d8df8f59-7dc7-4c59-be78-aea00114ae64/5643256c-50ca-4b83-bd76-aead00d561e1/31d0efea-4591-440a-8088-aead00d561fd/podcast.rss
 - Telex podcast: https://anchor.fm/s/dcfcc3bc/podcast/rss
 
 ### Youtube
 
 RSS feeds:
 
-- Use direct YouTube channel RSS: `https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID`
+- Use direct YouTube channel RSS:
+  `https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID`
 
 Channels links:
 
-- https://www.youtube.com/@Partiz%C3%A1nm%C3%A9dia
+- https://www.youtube.com/@Partizánmédia
 - https://www.youtube.com/@kontrollhu
 - https://www.youtube.com/@Telexponthu
 - https://www.youtube.com/@magyarhang
@@ -68,7 +72,8 @@ Channels links:
 
 Users can:
 
-- get a general overview about latest happenings (view latest articles, podcasts, videos)
+- get a general overview about latest happenings (view latest articles,
+  podcasts, videos)
 - filter by publisher or medium
 - get general overview about current/upcoming lives
 - choose which live to view embedded into the dashboard
@@ -93,14 +98,19 @@ Users can:
 
 # Widget types
 
-- YT lives (one widget per each live from publishers) with number of viewers. Order lives based on number of viewers, the most viewed live being the first one. Users should be able to watch lives on the dashboard, or to follow a link to youtube.
+- YT lives (one widget per each live from publishers) with number of viewers.
+  Order lives based on number of viewers, the most viewed live being the first
+  one. Users should be able to watch lives on the dashboard, or to follow a link
+  to youtube.
 - One widget for the latest 5 videos from all publishers
 - One widget for latest 5 podcasts from all publishers
 - One widget for latest 5 articles from all publishers
 - One widget for latest 5 youtube shorts from all publishers
 - (?) One widget to show latest 5 lives from all publishers
-- One widget to monitor Magyar Péter’s videos (youtube, youtube lives, youtube shorts)
-- One widget to show 3 upcoming lives, alert if there are multiple lives coming up at the same time
+- One widget to monitor Magyar Péter’s videos (youtube, youtube lives, youtube
+  shorts)
+- One widget to show 3 upcoming lives, alert if there are multiple lives coming
+  up at the same time
 
 # Naming conventions
 
@@ -108,11 +118,34 @@ The codebase uses the following naming conventions:
 
 - Shared UI primitives and helper files: `kebab-case` file names.
 - Page and widget component files: `PascalCase` file names.
-- React components and hooks: `PascalCase` for component names, `camelCase` for hook names.
+- React components and hooks: `PascalCase` for component names, `camelCase` for
+  hook names.
 - Variables and functions: `camelCase` for local values and exported helpers.
-- Constants and environment variables: `UPPER_SNAKE_CASE` for fixed values and `VITE_` prefixed env keys.
+- Constants and environment variables: `UPPER_SNAKE_CASE` for fixed values and
+  `VITE_` prefixed env keys.
 
-These conventions help keep filenames, component names, and variables consistent across the app.
+These conventions help keep filenames, component names, and variables consistent
+across the app.
+
+# Formatting
+
+This project uses [Prettier](https://prettier.io/) for code formatting. The
+config is in [.prettierrc](.prettierrc).
+
+Format all files:
+
+```bash
+npm run format
+```
+
+Check formatting without writing:
+
+```bash
+npm run format:check
+```
+
+ESLint is configured with `eslint-config-prettier` so its style rules don't
+conflict with Prettier.
 
 # Linting
 
@@ -124,11 +157,15 @@ Run lint checks with:
 npm run lint
 ```
 
-Fix lint issues by updating offending code in `src/` or by adjusting config only when the issue is intentional or part of a third-party integration. If lint reports a rule violation in the UI components, focus first on the files you changed or the top-level widgets.
+Fix lint issues by updating offending code in `src/` or by adjusting config only
+when the issue is intentional or part of a third-party integration. If lint
+reports a rule violation in the UI components, focus first on the files you
+changed or the top-level widgets.
 
 # Testing
 
-This project uses [Vitest](https://vitest.dev/) with jsdom for unit and hook tests.
+This project uses [Vitest](https://vitest.dev/) with jsdom for unit and hook
+tests.
 
 Run the tests with:
 
@@ -156,11 +193,15 @@ npx tsc --noEmit
 
 # Development proxy server
 
-The app uses a local proxy for some RSS and remote feed hosts in development. The proxy implementation is in `server/proxy-server.js`, and it avoids browser CORS restrictions for the supported feed hosts.
+The app uses a local proxy for some RSS and remote feed hosts in development.
+The proxy implementation is in `server/proxy-server.js`, and it avoids browser
+CORS restrictions for the supported feed hosts.
 
 When to use the proxy
 
-- Use the proxy when a feed or upstream resource does not include `Access-Control-Allow-Origin` headers (browser will block direct fetches). The browser-based RSS fetcher routes known hosts to `/api/proxy`.
+- Use the proxy when a feed or upstream resource does not include
+  `Access-Control-Allow-Origin` headers (browser will block direct fetches). The
+  browser-based RSS fetcher routes known hosts to `/api/proxy`.
 
 Run locally
 
@@ -182,40 +223,59 @@ Or run both together:
 npm run dev:all
 ```
 
-If the proxy server is not running, some RSS feed requests may fail in the browser.
+If the proxy server is not running, some RSS feed requests may fail in the
+browser.
 
 Security & configuration
 
-- The proxy binds to `127.0.0.1` only — it is not reachable from outside the machine.
-- CORS is restricted to the frontend origin via the `ALLOWED_ORIGIN` environment variable (default: `http://localhost:5173`). Set this in your `.env` file:
+- The proxy binds to `127.0.0.1` only — it is not reachable from outside the
+  machine.
+- CORS is restricted to the frontend origin via the `ALLOWED_ORIGIN` environment
+  variable (default: `http://localhost:5173`). Set this in your `.env` file:
   ```
   ALLOWED_ORIGIN=http://localhost:5173
   ```
-- The `ALLOWED_HOSTS` allowlist in `server/proxy-server.js` (kept in sync with `src/lib/proxy-hosts.ts`) restricts which upstream domains the proxy will fetch from. Keep this list small.
-- Rate limiting (`express-rate-limit`, per IP) and a 10-second AbortController timeout are in place.
+- The `ALLOWED_HOSTS` allowlist in `server/proxy-server.js` (kept in sync with
+  `src/lib/proxy-hosts.ts`) restricts which upstream domains the proxy will
+  fetch from. Keep this list small.
+- Rate limiting (`express-rate-limit`, per IP) and a 10-second AbortController
+  timeout are in place.
 - Responses larger than 5 MB are rejected before buffering.
-- The proxy sends conditional `If-Modified-Since` / `If-None-Match` headers on repeat requests, reducing bandwidth when feeds haven't changed.
-- The proxy identifies itself to upstream servers via a descriptive `User-Agent` header.
+- The proxy sends conditional `If-Modified-Since` / `If-None-Match` headers on
+  repeat requests, reducing bandwidth when feeds haven't changed.
+- The proxy identifies itself to upstream servers via a descriptive `User-Agent`
+  header.
 
 Privacy, legal, and operational reminders
 
-- The proxy will see full URLs and response content — do not proxy private or authenticated URLs unless you handle credentials securely.
-- Review upstream sites' Terms of Service and `robots.txt` before scraping or redistributing content; prefer official RSS/APIs when available.
-- All configured publishers use publicly available RSS feeds and the official YouTube API; no HTML scraping is performed.
+- The proxy will see full URLs and response content — do not proxy private or
+  authenticated URLs unless you handle credentials securely.
+- Review upstream sites' Terms of Service and `robots.txt` before scraping or
+  redistributing content; prefer official RSS/APIs when available.
+- All configured publishers use publicly available RSS feeds and the official
+  YouTube API; no HTML scraping is performed.
 
 Production deployment
 
-Run the proxy server behind a reverse proxy (nginx, caddy, etc.) that handles TLS and external traffic. The Express server only needs to be reachable on loopback:
+Run the proxy server behind a reverse proxy (nginx, caddy, etc.) that handles
+TLS and external traffic. The Express server only needs to be reachable on
+loopback:
 
 1. Deploy the compiled Vite frontend (static files) to your hosting provider.
-2. Run `node server/proxy-server.js` on the same host (or a trusted backend host).
-3. Configure the reverse proxy to forward `/api/proxy` requests to `http://127.0.0.1:3001`.
-4. Set `ALLOWED_ORIGIN` in the server environment to your frontend's public URL (e.g. `https://lenemaradjak.example.com`).
+2. Run `node server/proxy-server.js` on the same host (or a trusted backend
+   host).
+3. Configure the reverse proxy to forward `/api/proxy` requests to
+   `http://127.0.0.1:3001`.
+4. Set `ALLOWED_ORIGIN` in the server environment to your frontend's public URL
+   (e.g. `https://lenemaradjak.example.com`).
 
-For high-traffic deployments consider replacing the in-memory cache with Redis or a CDN edge cache.
+For high-traffic deployments consider replacing the in-memory cache with Redis
+or a CDN edge cache.
 
 Implementation notes (repo locations)
 
 - Proxy server: `server/proxy-server.js`
-- Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts to `/api/proxy`).
-- Shared host allowlist: `src/lib/proxy-hosts.ts` (imported by `rss.ts`; manually kept in sync with `server/proxy-server.js`).
+- Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts
+  to `/api/proxy`).
+- Shared host allowlist: `src/lib/proxy-hosts.ts` (imported by `rss.ts`;
+  manually kept in sync with `server/proxy-server.js`).

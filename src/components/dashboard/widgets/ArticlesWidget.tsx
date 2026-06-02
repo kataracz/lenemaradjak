@@ -20,8 +20,7 @@ export function ArticlesWidget({ publisherIds }: { publisherIds: string[] }) {
 
   return (
     <DashboardCard
-      title="Legfrissebb cikkek"
-      description="A kiválasztott kiadók friss cikkcímei."
+      title="Cikkek"
       actions={
         <Button
           variant="outline"
@@ -48,7 +47,7 @@ export function ArticlesWidget({ publisherIds }: { publisherIds: string[] }) {
             </div>
           ) : null}
           {items.length ? (
-            <div className="grid gap-4">
+            <div className="divide-y divide-border/60">
               {items.map((item) => (
                 <FeedItemCard
                   key={item.id}

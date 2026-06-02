@@ -6,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Drag04Icon } from "@hugeicons/core-free-icons";
 
 interface DashboardCardProps {
   title: string;
@@ -23,17 +25,25 @@ export function DashboardCard({
   className,
 }: DashboardCardProps) {
   return (
-    <Card className={className ?? "h-full"}>
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle>{title}</CardTitle>
-          {description ? (
-            <CardDescription>{description}</CardDescription>
-          ) : null}
+    <Card size="sm" className={className ?? "h-full"}>
+      <CardHeader className="flex! flex-row cursor-grab items-center gap-3 select-none">
+        <div className="drag-handle flex flex-1 items-center gap-2">
+          <HugeiconsIcon
+            icon={Drag04Icon}
+            size={12}
+            aria-hidden="true"
+            className="shrink-0 text-muted-foreground/50"
+          />
+          <div>
+            <CardTitle>{title}</CardTitle>
+            {description ? (
+              <CardDescription>{description}</CardDescription>
+            ) : null}
+          </div>
         </div>
-        {actions}
+        {actions ? <div className="shrink-0">{actions}</div> : null}
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto grid gap-4 px-0 pb-0 pt-2">
+      <CardContent className="flex-1 overflow-y-auto px-0 pb-0 pt-2">
         {children}
       </CardContent>
     </Card>

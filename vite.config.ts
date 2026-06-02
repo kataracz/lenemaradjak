@@ -21,6 +21,11 @@ export default defineConfig({
       "/api": "http://127.0.0.1:3001",
     },
   },
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(
+      process.env.NODE_ENV ?? "development",
+    ),
+  },
   test: {
     environment: "jsdom",
   },

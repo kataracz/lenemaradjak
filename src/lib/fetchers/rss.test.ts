@@ -69,9 +69,9 @@ describe("fetchRSSFeed", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 404 }),
     );
-    await expect(
-      fetchRSSFeed("https://example.com/feed.xml"),
-    ).rejects.toThrow("404");
+    await expect(fetchRSSFeed("https://example.com/feed.xml")).rejects.toThrow(
+      "404",
+    );
   });
 
   it("returns cached result without a second network request", async () => {

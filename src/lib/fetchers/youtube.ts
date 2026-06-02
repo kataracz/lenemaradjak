@@ -122,7 +122,9 @@ const storeCachedChannelId = (publisherId: string, channelId: string) => {
     channelIdCache,
     getChannelCacheKey(publisherId),
     CHANNEL_ID_CACHE_TTL_MS,
-    { id: channelId },
+    {
+      id: channelId,
+    },
   );
 };
 
@@ -164,7 +166,9 @@ const storeCachedVideoDetails = (channelId: string, items: VideoItem[]) => {
     videoDetailsCache,
     getVideoDetailsCacheKey(channelId),
     YOUTUBE_RESULT_TTL_MS,
-    { items },
+    {
+      items,
+    },
   );
 };
 

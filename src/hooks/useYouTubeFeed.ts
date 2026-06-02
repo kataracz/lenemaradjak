@@ -5,7 +5,10 @@ import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 
 export function useYouTubeFeed(
   publisherIds: string[],
-  fetcher: (publishers: PublisherConfig[], limit: number) => Promise<FeedItem[]>,
+  fetcher: (
+    publishers: PublisherConfig[],
+    limit: number,
+  ) => Promise<FeedItem[]>,
 ) {
   const [items, setItems] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -46,5 +49,12 @@ export function useYouTubeFeed(
     if (triggerRefresh()) void load();
   }, [triggerRefresh, load]);
 
-  return { items, loading, error, refresh, refreshDisabled, filteredPublishers };
+  return {
+    items,
+    loading,
+    error,
+    refresh,
+    refreshDisabled,
+    filteredPublishers,
+  };
 }

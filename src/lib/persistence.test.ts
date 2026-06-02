@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  loadDashboardLayouts,
-  saveDashboardLayouts,
-} from "@/lib/persistence";
+import { loadDashboardLayouts, saveDashboardLayouts } from "@/lib/persistence";
 
 const KEY = "lenemaradjak-dashboard-layout";
 

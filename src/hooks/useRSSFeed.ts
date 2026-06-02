@@ -24,8 +24,11 @@ export function useRSSFeed(
     try {
       const publisherFeeds = filteredPublishers
         .map((p) => ({ publisher: p, url: getFeedUrl(p) }))
-        .filter((entry): entry is { publisher: typeof entry.publisher; url: string } =>
-          Boolean(entry.url),
+        .filter(
+          (
+            entry,
+          ): entry is { publisher: typeof entry.publisher; url: string } =>
+            Boolean(entry.url),
         );
 
       const promises: Promise<FeedItem[]>[] = publisherFeeds.map(
