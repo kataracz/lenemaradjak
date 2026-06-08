@@ -93,7 +93,7 @@ export function FeedItemCard({
           href={item.url}
           target="_blank"
           rel="noreferrer"
-          className="text-base font-semibold underline-offset-4 transition hover:underline"
+          className="line-clamp-2 text-base font-semibold underline-offset-4 transition hover:underline"
         >
           {item.title}
         </a>
@@ -101,9 +101,11 @@ export function FeedItemCard({
           {item.channelName ?? item.source}
         </p>
       </div>
-      <p className="line-clamp-2 text-sm text-muted-foreground">
-        {item.description ?? descriptionFallback}
-      </p>
+      {(item.description ?? descriptionFallback) && (
+        <p className="line-clamp-2 text-sm text-muted-foreground">
+          {item.description ?? descriptionFallback}
+        </p>
+      )}
       {footer}
     </article>
   );

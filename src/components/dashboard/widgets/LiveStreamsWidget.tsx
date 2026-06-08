@@ -4,6 +4,7 @@ import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
 import { useYouTubeData } from "@/hooks/useYouTubeData";
 import { useVideoPlayer } from "@/contexts/useVideoPlayer";
+import { useContainerWidth } from "@/hooks/useContainerWidth";
 
 export function LiveStreamsWidget({
   publisherIds,
@@ -19,6 +20,7 @@ export function LiveStreamsWidget({
     filteredPublishers,
   } = useYouTubeData(publisherIds);
   const { setCurrentVideo } = useVideoPlayer();
+  const { ref: containerRef, isWide } = useContainerWidth();
 
   const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
   const hasChannelHandles = React.useMemo(
@@ -59,21 +61,29 @@ export function LiveStreamsWidget({
             </div>
           ) : null}
           {streams.length ? (
-            <div className="divide-y divide-border/60">
+            <div
+              ref={containerRef}
+              className={
+                isWide
+                  ? "flex flex-row gap-3 overflow-x-auto px-4 pb-3"
+                  : "divide-y divide-border/60"
+              }
+            >
               {streams.map((item) => (
-                <FeedItemCard
-                  key={item.id}
-                  item={item}
-                  compact
-                  onPlay={() => {
-                    setCurrentVideo(item);
-                  }}
-                  footer={
-                    <span className="text-xs text-muted-foreground">
-                      Élőben · {new Date(item.publishedAt).toLocaleString()}
-                    </span>
-                  }
-                />
+                <div key={item.id} className={isWide ? "w-48 shrink-0" : undefined}>
+                  <FeedItemCard
+                    item={item}
+                    compact={!isWide}
+                    onPlay={() => {
+                      setCurrentVideo(item);
+                    }}
+                    footer={
+                      <span className="text-xs text-muted-foreground">
+                        Élőben · {new Date(item.publishedAt).toLocaleString()}
+                      </span>
+                    }
+                  />
+                </div>
               ))}
             </div>
           ) : !error ? (
