@@ -147,10 +147,18 @@ const storeCachedChannelData = (
 };
 
 async function proxyFetch(url: URL): Promise<Response> {
-  if (typeof window !== "undefined" && PROXY_HOSTS.has(url.hostname)) {
-    return fetch(`/api/proxy?url=${encodeURIComponent(url.toString())}`);
+  const doFetch = () =>
+    typeof window !== "undefined" && PROXY_HOSTS.has(url.hostname)
+      ? fetch(`/api/proxy?url=${encodeURIComponent(url.toString())}`)
+      : fetch(url.toString());
+
+  const res = await doFetch();
+  if (res.status === 429) {
+    const waitSec = Number(res.headers.get("Retry-After") ?? 5);
+    await new Promise((r) => setTimeout(r, waitSec * 1000));
+    return doFetch();
   }
-  return fetch(url.toString());
+  return res;
 }
 
 const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "");

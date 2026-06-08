@@ -17,13 +17,15 @@ const RESPONSE_TOO_LARGE = "Upstream response too large";
 
 const PER_HOST_WINDOWS = new Map(); // hostname -> number[] (upstream request timestamps)
 const PER_HOST_LIMITS = {
-  "googleapis.com": { max: 30, windowMs: 60_000 },
+  "googleapis.com": { max: 20, windowMs: 60_000 },
   default: { max: 15, windowMs: 60_000 },
 };
 
 function checkPerHostRateLimit(hostname) {
-  const { max, windowMs } =
-    PER_HOST_LIMITS[hostname] ?? PER_HOST_LIMITS.default;
+  const entry = Object.entries(PER_HOST_LIMITS).find(
+    ([key]) => key !== "default" && hostname.endsWith(key),
+  ) ?? ["default", PER_HOST_LIMITS.default];
+  const { max, windowMs } = entry[1];
   const now = Date.now();
   const cutoff = now - windowMs;
   const timestamps = PER_HOST_WINDOWS.get(hostname) ?? [];
