@@ -5,7 +5,6 @@ const apiKey: string | undefined = import.meta.env.VITE_YOUTUBE_API_KEY as
   | string
   | undefined;
 
-// Channel ID resolution cache (24h TTL)
 const CHANNEL_ID_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const channelIdCache = new Map<string, { expires: number; id: string }>();
 const channelResolutionInflight = new Map<
@@ -13,25 +12,15 @@ const channelResolutionInflight = new Map<
   Promise<string | undefined>
 >();
 
-// Video/stream result cache (15-min TTL, per channel)
 const YOUTUBE_RESULT_TTL_MS = 15 * 60 * 1000;
-const videoResultCache = new Map<
+const channelDataCache = new Map<
   string,
-  { expires: number; items: FeedItem[] }
+  { expires: number; videos: FeedItem[]; streams: FeedItem[] }
 >();
-const streamResultCache = new Map<
+const channelDataInflight = new Map<
   string,
-  { expires: number; items: FeedItem[] }
+  Promise<{ videos: FeedItem[]; streams: FeedItem[] }>
 >();
-const videoDetailsCache = new Map<
-  string,
-  { expires: number; items: VideoItem[] }
->();
-const videoFetchInflight = new Map<string, Promise<FeedItem[]>>();
-const streamFetchInflight = new Map<string, Promise<FeedItem[]>>();
-const videoDetailsInflight = new Map<string, Promise<VideoItem[]>>();
-
-// ── API response types ────────────────────────────────────────────────────────
 
 interface PlaylistContentItem {
   contentDetails?: { videoId?: string };
@@ -49,21 +38,11 @@ interface VideoItem {
   };
 }
 
-// ── Cache key helpers ────────────────────────────────────────────────────────
-
 const getChannelCacheKey = (publisherId: string) =>
   `lenemaradjak:youtube-channel-id:${publisherId}`;
 
-const getVideoCacheKey = (channelId: string) =>
-  `lenemaradjak:youtube:videos:${channelId}`;
-
-const getStreamCacheKey = (channelId: string) =>
-  `lenemaradjak:youtube:streams:${channelId}`;
-
-const getVideoDetailsCacheKey = (channelId: string) =>
-  `lenemaradjak:youtube:video-details:${channelId}`;
-
-// ── Generic localStorage-backed cache helpers ────────────────────────────────
+const getChannelDataCacheKey = (channelId: string) =>
+  `lenemaradjak:youtube:channel-data:${channelId}`;
 
 function loadFromCache<T>(
   memoryCache: Map<string, { expires: number } & T>,
@@ -110,8 +89,6 @@ function saveToCache<T>(
   }
 }
 
-// ── Convenience wrappers for each cache type ─────────────────────────────────
-
 const loadCachedChannelId = (publisherId: string): string | undefined => {
   const key = getChannelCacheKey(publisherId);
   return loadFromCache<{ id: string }>(channelIdCache, key)?.id;
@@ -128,51 +105,29 @@ const storeCachedChannelId = (publisherId: string, channelId: string) => {
   );
 };
 
-const loadCachedVideos = (channelId: string): FeedItem[] | undefined => {
-  const key = getVideoCacheKey(channelId);
-  return loadFromCache<{ items: FeedItem[] }>(videoResultCache, key)?.items;
+const loadCachedChannelData = (
+  channelId: string,
+): { videos: FeedItem[]; streams: FeedItem[] } | undefined => {
+  const key = getChannelDataCacheKey(channelId);
+  const entry = loadFromCache<{ videos: FeedItem[]; streams: FeedItem[] }>(
+    channelDataCache,
+    key,
+  );
+  return entry ? { videos: entry.videos, streams: entry.streams } : undefined;
 };
 
-const storeCachedVideos = (channelId: string, items: FeedItem[]) => {
+const storeCachedChannelData = (
+  channelId: string,
+  videos: FeedItem[],
+  streams: FeedItem[],
+) => {
   saveToCache(
-    videoResultCache,
-    getVideoCacheKey(channelId),
+    channelDataCache,
+    getChannelDataCacheKey(channelId),
     YOUTUBE_RESULT_TTL_MS,
-    { items },
+    { videos, streams },
   );
 };
-
-const loadCachedStreams = (channelId: string): FeedItem[] | undefined => {
-  const key = getStreamCacheKey(channelId);
-  return loadFromCache<{ items: FeedItem[] }>(streamResultCache, key)?.items;
-};
-
-const storeCachedStreams = (channelId: string, items: FeedItem[]) => {
-  saveToCache(
-    streamResultCache,
-    getStreamCacheKey(channelId),
-    YOUTUBE_RESULT_TTL_MS,
-    { items },
-  );
-};
-
-const loadCachedVideoDetails = (channelId: string): VideoItem[] | undefined => {
-  const key = getVideoDetailsCacheKey(channelId);
-  return loadFromCache<{ items: VideoItem[] }>(videoDetailsCache, key)?.items;
-};
-
-const storeCachedVideoDetails = (channelId: string, items: VideoItem[]) => {
-  saveToCache(
-    videoDetailsCache,
-    getVideoDetailsCacheKey(channelId),
-    YOUTUBE_RESULT_TTL_MS,
-    {
-      items,
-    },
-  );
-};
-
-// ── Proxy-aware fetch ────────────────────────────────────────────────────────
 
 async function proxyFetch(url: URL): Promise<Response> {
   if (typeof window !== "undefined" && PROXY_HOSTS.has(url.hostname)) {
@@ -180,8 +135,6 @@ async function proxyFetch(url: URL): Promise<Response> {
   }
   return fetch(url.toString());
 }
-
-// ── Channel handle → ID resolution ───────────────────────────────────────────
 
 const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "");
 
@@ -297,22 +250,22 @@ async function resolveChannelPublishers(
     );
 }
 
-// ── Per-channel fetch helpers (with cache + inflight dedup) ──────────────────
+function fetchChannelData(
+  publisher: PublisherConfig,
+  channelId: string,
+): Promise<{ videos: FeedItem[]; streams: FeedItem[] }> {
+  if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
 
-// Shared: fetches recent uploads playlist IDs then hydrates video details.
-// Both fetchChannelVideos and fetchChannelLiveStreams call this so the two
-// API calls (playlistItems + videos) fire only once per channel per TTL window,
-// even when both widgets are mounted simultaneously.
-function fetchChannelVideoDetails(channelId: string): Promise<VideoItem[]> {
-  if (!apiKey) return Promise.resolve([]);
-
-  const cached = loadCachedVideoDetails(channelId);
+  const cached = loadCachedChannelData(channelId);
   if (cached) return Promise.resolve(cached);
 
-  const inflight = videoDetailsInflight.get(channelId);
+  const inflight = channelDataInflight.get(channelId);
   if (inflight) return inflight;
 
   const promise = (async () => {
+    // Fetch 10 items to ensure a currently-live stream is captured even when
+    // the channel recently uploaded several regular videos. playlistItems.list
+    // charges 1 quota unit regardless of maxResults (up to 50).
     const playlistUrl = new URL(
       "https://www.googleapis.com/youtube/v3/playlistItems",
     );
@@ -336,11 +289,11 @@ function fetchChannelVideoDetails(channelId: string): Promise<VideoItem[]> {
       .filter((id): id is string => Boolean(id));
 
     if (videoIds.length === 0) {
-      storeCachedVideoDetails(channelId, []);
-      return [];
+      storeCachedChannelData(channelId, [], []);
+      return { videos: [], streams: [] };
     }
 
-    // videos.list returns snippet.liveBroadcastContent used by the live stream filter.
+    // videos.list returns snippet.liveBroadcastContent used to split streams from videos.
     const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
     videosUrl.searchParams.set("part", "snippet");
     videosUrl.searchParams.set("id", videoIds.join(","));
@@ -356,192 +309,97 @@ function fetchChannelVideoDetails(channelId: string): Promise<VideoItem[]> {
     const videosResult = (await videosResponse.json()) as {
       items?: VideoItem[];
     };
-    const items = videosResult.items ?? [];
-    storeCachedVideoDetails(channelId, items);
-    return items;
-  })();
+    const rawItems = videosResult.items ?? [];
 
-  videoDetailsInflight.set(channelId, promise);
-  promise.then(
-    () => videoDetailsInflight.delete(channelId),
-    () => videoDetailsInflight.delete(channelId),
-  );
-
-  return promise;
-}
-
-function fetchChannelVideos(
-  publisher: PublisherConfig,
-  channelId: string,
-): Promise<FeedItem[]> {
-  if (!apiKey) return Promise.resolve([]);
-
-  const cached = loadCachedVideos(channelId);
-  if (cached) return Promise.resolve(cached);
-
-  const inflight = videoFetchInflight.get(channelId);
-  if (inflight) return inflight;
-
-  const promise = (async () => {
-    const videoItems = await fetchChannelVideoDetails(channelId);
-    const items: FeedItem[] = videoItems.map((item) => ({
+    const toFeedItem = (item: VideoItem, isLive: boolean): FeedItem => ({
       id:
         item.id ??
-        `${publisher.id}-${item.snippet?.publishedAt ?? new Date().toISOString()}`,
-      title: item.snippet?.title ?? "Untitled",
+        `${publisher.id}-${isLive ? "live" : (item.snippet?.publishedAt ?? new Date().toISOString())}`,
+      title: item.snippet?.title ?? (isLive ? "Live stream" : "Untitled"),
       description: item.snippet?.description,
       url: item.id ? `https://www.youtube.com/watch?v=${item.id}` : "#",
       publishedAt: item.snippet?.publishedAt ?? new Date().toISOString(),
       thumbnailUrl: item.snippet?.thumbnails?.medium?.url,
       channelName: item.snippet?.channelTitle,
       source: publisher.name,
-    }));
+      ...(isLive ? { isLive: true } : {}),
+    });
 
-    storeCachedVideos(channelId, items);
-    return items;
-  })();
+    const videos = rawItems
+      .filter((item) => item.snippet?.liveBroadcastContent !== "live")
+      .map((item) => toFeedItem(item, false));
 
-  videoFetchInflight.set(channelId, promise);
-  promise.then(
-    () => videoFetchInflight.delete(channelId),
-    () => videoFetchInflight.delete(channelId),
-  );
-
-  return promise;
-}
-
-function fetchChannelLiveStreams(
-  publisher: PublisherConfig,
-  channelId: string,
-): Promise<FeedItem[]> {
-  if (!apiKey) return Promise.resolve([]);
-
-  const cached = loadCachedStreams(channelId);
-  if (cached) return Promise.resolve(cached);
-
-  const inflight = streamFetchInflight.get(channelId);
-  if (inflight) return inflight;
-
-  const promise = (async () => {
-    const videoItems = await fetchChannelVideoDetails(channelId);
-    const items: FeedItem[] = videoItems
+    const streams = rawItems
       .filter((item) => item.snippet?.liveBroadcastContent === "live")
-      .map((item) => ({
-        id: item.id ?? `${publisher.id}-live`,
-        title: item.snippet?.title ?? "Live stream",
-        description: item.snippet?.description,
-        url: item.id ? `https://www.youtube.com/watch?v=${item.id}` : "#",
-        publishedAt: item.snippet?.publishedAt ?? new Date().toISOString(),
-        thumbnailUrl: item.snippet?.thumbnails?.medium?.url,
-        channelName: item.snippet?.channelTitle,
-        source: publisher.name,
-        isLive: true,
-      }));
+      .map((item) => toFeedItem(item, true));
 
-    storeCachedStreams(channelId, items);
-    return items;
+    storeCachedChannelData(channelId, videos, streams);
+    return { videos, streams };
   })();
 
-  streamFetchInflight.set(channelId, promise);
+  channelDataInflight.set(channelId, promise);
   promise.then(
-    () => streamFetchInflight.delete(channelId),
-    () => streamFetchInflight.delete(channelId),
+    () => channelDataInflight.delete(channelId),
+    () => channelDataInflight.delete(channelId),
   );
 
   return promise;
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export async function fetchYouTubeVideos(
+export async function fetchYouTubeData(
   publishers: PublisherConfig[],
   maxItems = 5,
-): Promise<FeedItem[]> {
+): Promise<{ videos: FeedItem[]; streams: FeedItem[]; partialError?: string }> {
   if (!apiKey) {
-    return [];
-  }
-
-  const resolvedPublishers = await resolveChannelPublishers(publishers);
-
-  if (resolvedPublishers.length > 0) {
-    const results = await Promise.allSettled(
-      resolvedPublishers.map(({ publisher, channelId }) =>
-        fetchChannelVideos(publisher, channelId),
-      ),
-    );
-
-    const videos = results
-      .filter(
-        (r): r is PromiseFulfilledResult<FeedItem[]> =>
-          r.status === "fulfilled",
-      )
-      .flatMap((r) => r.value);
-
-    if (videos.length > 0) {
-      return videos
-        .sort(
-          (a, b) =>
-            new Date(b.publishedAt).getTime() -
-            new Date(a.publishedAt).getTime(),
-        )
-        .slice(0, maxItems);
-    }
-
-    const firstError = results.find(
-      (r): r is PromiseRejectedResult => r.status === "rejected",
-    );
-    if (firstError) {
-      throw firstError.reason instanceof Error
-        ? firstError.reason
-        : new Error("YouTube API request failed.");
-    }
-  }
-
-  return [];
-}
-
-export async function fetchYouTubeLiveStreams(
-  publishers: PublisherConfig[],
-  maxItems = 5,
-): Promise<FeedItem[]> {
-  if (!apiKey) {
-    return [];
+    return { videos: [], streams: [] };
   }
 
   const resolvedPublishers = await resolveChannelPublishers(publishers);
   if (resolvedPublishers.length === 0) {
-    return [];
+    return { videos: [], streams: [] };
   }
 
   const results = await Promise.allSettled(
     resolvedPublishers.map(({ publisher, channelId }) =>
-      fetchChannelLiveStreams(publisher, channelId),
+      fetchChannelData(publisher, channelId),
     ),
   );
 
-  const streams = results
-    .filter(
-      (r): r is PromiseFulfilledResult<FeedItem[]> => r.status === "fulfilled",
-    )
-    .flatMap((r) => r.value);
+  const allVideos: FeedItem[] = [];
+  const allStreams: FeedItem[] = [];
+  let firstError: PromiseRejectedResult | undefined;
+  let failedCount = 0;
 
-  if (streams.length > 0) {
-    return streams
-      .sort(
-        (a, b) =>
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-      )
-      .slice(0, maxItems);
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      allVideos.push(...result.value.videos);
+      allStreams.push(...result.value.streams);
+    } else {
+      console.error(result.reason);
+      firstError ??= result;
+      failedCount++;
+    }
   }
 
-  const firstError = results.find(
-    (r): r is PromiseRejectedResult => r.status === "rejected",
-  );
-  if (firstError) {
+  const sortDesc = (a: FeedItem, b: FeedItem) =>
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+
+  const videos = allVideos.sort(sortDesc).slice(0, maxItems);
+  const streams = allStreams.sort(sortDesc).slice(0, maxItems);
+
+  // Only throw when everything failed and there is nothing to show.
+  if (videos.length === 0 && streams.length === 0 && firstError) {
     throw firstError.reason instanceof Error
       ? firstError.reason
-      : new Error("YouTube Live API request failed.");
+      : new Error("YouTube API request failed.");
   }
 
-  return [];
+  const partialError =
+    failedCount > 0
+      ? failedCount === 1
+        ? "Egy YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek."
+        : `${String(failedCount)} YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek.`
+      : undefined;
+
+  return { videos, streams, partialError };
 }

@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Drag04Icon } from "@hugeicons/core-free-icons";
+import { DragDropVerticalIcon } from "@hugeicons/core-free-icons";
 
 interface DashboardCardProps {
   title: string;
@@ -29,10 +29,10 @@ export function DashboardCard({
       <CardHeader className="flex! flex-row cursor-grab items-center gap-3 select-none">
         <div className="drag-handle flex flex-1 items-center gap-2">
           <HugeiconsIcon
-            icon={Drag04Icon}
-            size={12}
+            icon={DragDropVerticalIcon}
+            size={24}
             aria-hidden="true"
-            className="shrink-0 text-muted-foreground/50"
+            className="shrink-0 text-muted-foreground/60"
           />
           <div>
             <CardTitle>{title}</CardTitle>

@@ -17,40 +17,37 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { VideoPlayerProvider } from "@/contexts/VideoPlayerContext";
 import { VideoPlayerFloatingWidget } from "@/components/dashboard/widgets/VideoPlayerFloatingWidget";
-import { LiveStreamsWidget } from "@/components/dashboard/widgets/LiveStreamsWidget";
-
-const LIVE_STREAMS_COMPACT_H = 6;
 
 const defaultLayouts: DashboardLayouts = {
   lg: [
-    { i: "liveStreams", x: 0, y: 0, w: 12, h: 14, minW: 12, minH: 5 },
-    { i: "youtubeVideos", x: 0, y: 14, w: 6, h: 12, minW: 4, minH: 10 },
-    { i: "podcasts", x: 0, y: 26, w: 6, h: 12, minW: 4, minH: 10 },
-    { i: "articles", x: 6, y: 26, w: 6, h: 12, minW: 4, minH: 10 },
+    { i: "liveStreams", x: 0, y: 0, w: 6, h: 10, minW: 3, minH: 4 },
+    { i: "youtubeVideos", x: 6, y: 0, w: 6, h: 12, minW: 4, minH: 10 },
+    { i: "podcasts", x: 0, y: 10, w: 6, h: 12, minW: 4, minH: 10 },
+    { i: "articles", x: 6, y: 12, w: 6, h: 12, minW: 4, minH: 10 },
   ],
   md: [
-    { i: "liveStreams", x: 0, y: 0, w: 10, h: 14, minW: 10, minH: 5 },
-    { i: "youtubeVideos", x: 0, y: 14, w: 5, h: 12, minW: 4, minH: 10 },
-    { i: "podcasts", x: 0, y: 26, w: 5, h: 12, minW: 4, minH: 10 },
-    { i: "articles", x: 5, y: 26, w: 5, h: 12, minW: 4, minH: 10 },
+    { i: "liveStreams", x: 0, y: 0, w: 5, h: 10, minW: 3, minH: 4 },
+    { i: "youtubeVideos", x: 5, y: 0, w: 5, h: 12, minW: 4, minH: 10 },
+    { i: "podcasts", x: 0, y: 10, w: 5, h: 12, minW: 4, minH: 10 },
+    { i: "articles", x: 5, y: 12, w: 5, h: 12, minW: 4, minH: 10 },
   ],
   sm: [
-    { i: "liveStreams", x: 0, y: 0, w: 6, h: 14 },
-    { i: "youtubeVideos", x: 0, y: 14, w: 6, h: 12 },
-    { i: "podcasts", x: 0, y: 28, w: 6, h: 12 },
-    { i: "articles", x: 0, y: 40, w: 6, h: 12 },
+    { i: "liveStreams", x: 0, y: 0, w: 3, h: 10, minW: 3, minH: 4 },
+    { i: "youtubeVideos", x: 3, y: 0, w: 3, h: 12 },
+    { i: "podcasts", x: 0, y: 10, w: 6, h: 12 },
+    { i: "articles", x: 0, y: 22, w: 6, h: 12 },
   ],
   xs: [
-    { i: "liveStreams", x: 0, y: 0, w: 2, h: 14 },
-    { i: "youtubeVideos", x: 0, y: 14, w: 2, h: 12 },
-    { i: "podcasts", x: 0, y: 28, w: 2, h: 12 },
-    { i: "articles", x: 0, y: 40, w: 2, h: 12 },
+    { i: "liveStreams", x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 4 },
+    { i: "youtubeVideos", x: 0, y: 10, w: 4, h: 12 },
+    { i: "podcasts", x: 0, y: 22, w: 4, h: 12 },
+    { i: "articles", x: 0, y: 34, w: 4, h: 12 },
   ],
   xxs: [
-    { i: "liveStreams", x: 0, y: 0, w: 2, h: 14 },
-    { i: "youtubeVideos", x: 0, y: 14, w: 2, h: 12 },
-    { i: "podcasts", x: 0, y: 28, w: 2, h: 12 },
-    { i: "articles", x: 0, y: 40, w: 2, h: 12 },
+    { i: "liveStreams", x: 0, y: 0, w: 2, h: 10, minW: 2, minH: 4 },
+    { i: "youtubeVideos", x: 0, y: 10, w: 2, h: 12 },
+    { i: "podcasts", x: 0, y: 22, w: 2, h: 12 },
+    { i: "articles", x: 0, y: 34, w: 2, h: 12 },
   ],
 };
 
@@ -61,8 +58,6 @@ const publisherOptions = [{ id: "all", name: "Összes kiadó" }, ...publishers];
 export default function Page() {
   const { layouts, setLayouts } = useDashboardPersistence(defaultLayouts);
   const [publisherFilter, setPublisherFilter] = React.useState<string>("all");
-  const [liveStreamsHasContent, setLiveStreamsHasContent] =
-    React.useState(true);
 
   const filteredPublisherIds = React.useMemo(() => {
     if (publisherFilter === "all") {
@@ -73,37 +68,11 @@ export default function Page() {
 
   const { width, containerRef, mounted } = useContainerWidth();
 
-  const displayLayouts = React.useMemo<DashboardLayouts>(() => {
-    if (liveStreamsHasContent) return layouts;
-    const result: DashboardLayouts = {};
-    for (const [bp, bpLayouts] of Object.entries(layouts)) {
-      result[bp] = (bpLayouts ?? []).map((item) =>
-        item.i === "liveStreams"
-          ? { ...item, h: LIVE_STREAMS_COMPACT_H, minH: LIVE_STREAMS_COMPACT_H }
-          : item,
-      );
-    }
-    return result;
-  }, [layouts, liveStreamsHasContent]);
-
   const handleLayoutChange = React.useCallback(
     (_layout: Layout, allLayouts: DashboardLayouts) => {
-      if (!liveStreamsHasContent) {
-        // Don't persist the compact height — restore liveStreams from saved layouts
-        const restored: DashboardLayouts = {};
-        for (const [bp, bpLayouts] of Object.entries(allLayouts)) {
-          restored[bp] = (bpLayouts ?? []).map((item) => {
-            if (item.i !== "liveStreams") return item;
-            const prev = (layouts[bp] ?? []).find((l) => l.i === "liveStreams");
-            return prev ? { ...item, h: prev.h, minH: prev.minH } : item;
-          });
-        }
-        setLayouts(restored);
-      } else {
-        setLayouts(allLayouts);
-      }
+      setLayouts(allLayouts);
     },
-    [liveStreamsHasContent, layouts, setLayouts],
+    [setLayouts],
   );
 
   return (
@@ -143,14 +112,17 @@ export default function Page() {
               {mounted && (
                 <ResponsiveGridLayout
                   className="layout"
-                  layouts={displayLayouts}
+                  layouts={layouts}
                   breakpoints={breakpoints}
                   cols={cols}
                   rowHeight={28}
                   margin={[12, 12]}
                   containerPadding={[8, 8]}
                   width={width}
-                  dragConfig={{ cancel: "a, button, input, select, textarea" }}
+                  dragConfig={{
+                    handle: ".drag-handle",
+                    cancel: "a, button, input, select, textarea",
+                  }}
                   onLayoutChange={handleLayoutChange}
                 >
                   {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
@@ -166,16 +138,9 @@ export default function Page() {
                         key={item.i}
                         className="rounded-3xl border border-muted/10 shadow-sm"
                       >
-                        {item.i === "liveStreams" ? (
-                          <LiveStreamsWidget
-                            publisherIds={filteredPublisherIds}
-                            onHasContent={setLiveStreamsHasContent}
-                          />
-                        ) : (
-                          <widgetDef.component
-                            publisherIds={filteredPublisherIds}
-                          />
-                        )}
+                        <widgetDef.component
+                          publisherIds={filteredPublisherIds}
+                        />
                       </div>
                     );
                   })}
