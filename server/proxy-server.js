@@ -17,7 +17,7 @@ const RESPONSE_TOO_LARGE = "Upstream response too large";
 
 const PER_HOST_WINDOWS = new Map(); // hostname -> number[] (upstream request timestamps)
 const PER_HOST_LIMITS = {
-  "googleapis.com": { max: 20, windowMs: 60_000 },
+  "googleapis.com": { max: 30, windowMs: 60_000 },
   default: { max: 15, windowMs: 60_000 },
 };
 
