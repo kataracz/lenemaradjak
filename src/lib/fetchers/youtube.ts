@@ -1,5 +1,6 @@
 import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 import { PROXY_HOSTS } from "@/lib/proxy-hosts";
+import { sortByDateDesc } from "@/lib/utils";
 
 const apiKey: string | undefined = import.meta.env.VITE_YOUTUBE_API_KEY as
   | string
@@ -21,6 +22,22 @@ const channelDataInflight = new Map<
   string,
   Promise<{ videos: FeedItem[]; streams: FeedItem[] }>
 >();
+
+function withInflight<T>(
+  map: Map<string, Promise<T>>,
+  key: string,
+  factory: () => Promise<T>,
+): Promise<T> {
+  const existing = map.get(key);
+  if (existing) return existing;
+  const promise = factory();
+  map.set(key, promise);
+  promise.then(
+    () => map.delete(key),
+    () => map.delete(key),
+  );
+  return promise;
+}
 
 interface PlaylistContentItem {
   contentDetails?: { videoId?: string };
@@ -154,10 +171,7 @@ async function resolveYouTubeChannelId(
   const cached = loadCachedChannelId(publisher.id);
   if (cached) return cached;
 
-  const inflight = channelResolutionInflight.get(publisher.id);
-  if (inflight) return inflight;
-
-  const promise = (async (): Promise<string | undefined> => {
+  return withInflight(channelResolutionInflight, publisher.id, async () => {
     // Step 1: forHandle — modern low-cost lookup (1 quota unit), works with Brand Accounts.
     // forUsername is deprecated and triggers accountDelegationForbidden for Brand Accounts.
     const handleUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
@@ -214,15 +228,7 @@ async function resolveYouTubeChannelId(
       `YouTube: could not resolve channel ID for ${publisher.id} (${handle})`,
     );
     return undefined;
-  })();
-
-  channelResolutionInflight.set(publisher.id, promise);
-  promise.then(
-    () => channelResolutionInflight.delete(publisher.id),
-    () => channelResolutionInflight.delete(publisher.id),
-  );
-
-  return promise;
+  });
 }
 
 async function resolveChannelPublishers(
@@ -259,10 +265,7 @@ function fetchChannelData(
   const cached = loadCachedChannelData(channelId);
   if (cached) return Promise.resolve(cached);
 
-  const inflight = channelDataInflight.get(channelId);
-  if (inflight) return inflight;
-
-  const promise = (async () => {
+  return withInflight(channelDataInflight, channelId, async () => {
     // Fetch 10 items to ensure a currently-live stream is captured even when
     // the channel recently uploaded several regular videos. playlistItems.list
     // charges 1 quota unit regardless of maxResults (up to 50).
@@ -322,7 +325,7 @@ function fetchChannelData(
       thumbnailUrl: item.snippet?.thumbnails?.medium?.url,
       channelName: item.snippet?.channelTitle,
       source: publisher.name,
-      ...(isLive ? { isLive: true } : {}),
+      isLive: isLive || undefined,
     });
 
     const videos = rawItems
@@ -335,15 +338,7 @@ function fetchChannelData(
 
     storeCachedChannelData(channelId, videos, streams);
     return { videos, streams };
-  })();
-
-  channelDataInflight.set(channelId, promise);
-  promise.then(
-    () => channelDataInflight.delete(channelId),
-    () => channelDataInflight.delete(channelId),
-  );
-
-  return promise;
+  });
 }
 
 export async function fetchYouTubeData(
@@ -381,11 +376,8 @@ export async function fetchYouTubeData(
     }
   }
 
-  const sortDesc = (a: FeedItem, b: FeedItem) =>
-    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-
-  const videos = allVideos.sort(sortDesc).slice(0, maxItems);
-  const streams = allStreams.sort(sortDesc).slice(0, maxItems);
+  const videos = allVideos.sort(sortByDateDesc).slice(0, maxItems);
+  const streams = allStreams.sort(sortByDateDesc).slice(0, maxItems);
 
   // Only throw when everything failed and there is nothing to show.
   if (videos.length === 0 && streams.length === 0 && firstError) {
@@ -396,9 +388,7 @@ export async function fetchYouTubeData(
 
   const partialError =
     failedCount > 0
-      ? failedCount === 1
-        ? "Egy YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek."
-        : `${String(failedCount)} YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek.`
+      ? `${failedCount === 1 ? "Egy" : String(failedCount)} YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek.`
       : undefined;
 
   return { videos, streams, partialError };

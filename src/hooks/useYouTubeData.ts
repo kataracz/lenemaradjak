@@ -49,6 +49,14 @@ export function useYouTubeData(publisherIds: string[]) {
     if (triggerRefresh()) void load();
   }, [triggerRefresh, load]);
 
+  const hasConfiguredChannels = React.useMemo(
+    () =>
+      filteredPublishers.some(
+        (p) => p.youtubeChannelId ?? p.youtubeChannelHandle,
+      ),
+    [filteredPublishers],
+  );
+
   return {
     videos,
     streams,
@@ -56,6 +64,6 @@ export function useYouTubeData(publisherIds: string[]) {
     error,
     refresh,
     refreshDisabled,
-    filteredPublishers,
+    hasConfiguredChannels,
   };
 }

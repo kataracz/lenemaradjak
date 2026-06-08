@@ -4,3 +4,10 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export function sortByDateDesc(
+  a: { publishedAt: string },
+  b: { publishedAt: string },
+) {
+  return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+}

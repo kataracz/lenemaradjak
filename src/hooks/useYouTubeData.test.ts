@@ -77,7 +77,7 @@ describe("useYouTubeData", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("filteredPublishers contains only publishers matching publisherIds", async () => {
+  it("hasConfiguredChannels is true when a matched publisher has a channel ID", async () => {
     vi.mocked(fetchYouTubeData).mockResolvedValue({ videos: [], streams: [] });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
@@ -86,8 +86,7 @@ describe("useYouTubeData", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.filteredPublishers).toHaveLength(1);
-    expect(result.current.filteredPublishers[0].id).toBe("pub1");
+    expect(result.current.hasConfiguredChannels).toBe(true);
   });
 
   it("sets error while keeping items when fetch resolves with partialError", async () => {

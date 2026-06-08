@@ -53,7 +53,10 @@ export function YoutubeVideosWidget({
               }
             >
               {videos.map((item) => (
-                <div key={item.id} className={isWide ? "w-48 shrink-0" : undefined}>
+                <div
+                  key={item.id}
+                  className={isWide ? "w-48 shrink-0" : undefined}
+                >
                   <FeedItemCard
                     item={item}
                     compact={!isWide}

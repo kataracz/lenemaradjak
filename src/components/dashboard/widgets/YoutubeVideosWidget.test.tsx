@@ -61,7 +61,7 @@ function mockFeed(
     error: null,
     refresh: vi.fn(),
     refreshDisabled: false,
-    filteredPublishers: [],
+    hasConfiguredChannels: true,
     ...overrides,
   });
 }

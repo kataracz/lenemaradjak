@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
@@ -17,20 +16,12 @@ export function LiveStreamsWidget({
     error,
     refresh,
     refreshDisabled,
-    filteredPublishers,
+    hasConfiguredChannels,
   } = useYouTubeData(publisherIds);
   const { setCurrentVideo } = useVideoPlayer();
   const { ref: containerRef, isWide } = useContainerWidth();
 
   const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
-  const hasChannelHandles = React.useMemo(
-    () =>
-      filteredPublishers.some(
-        (publisher) =>
-          publisher.youtubeChannelId ?? publisher.youtubeChannelHandle,
-      ),
-    [filteredPublishers],
-  );
 
   return (
     <DashboardCard
@@ -70,7 +61,10 @@ export function LiveStreamsWidget({
               }
             >
               {streams.map((item) => (
-                <div key={item.id} className={isWide ? "w-48 shrink-0" : undefined}>
+                <div
+                  key={item.id}
+                  className={isWide ? "w-48 shrink-0" : undefined}
+                >
                   <FeedItemCard
                     item={item}
                     compact={!isWide}
@@ -87,7 +81,7 @@ export function LiveStreamsWidget({
               ))}
             </div>
           ) : !error ? (
-            !hasYouTubeApiKey || !hasChannelHandles ? (
+            !hasYouTubeApiKey || !hasConfiguredChannels ? (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                 Az élő közvetítés-felismerés nem aktív. Add meg a
                 `VITE_YOUTUBE_API_KEY` értékét és ellenőrizd a kiadók

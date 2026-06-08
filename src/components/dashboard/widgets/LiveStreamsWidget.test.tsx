@@ -1,7 +1,7 @@
 import * as React from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import type { FeedItem, PublisherConfig } from "@/types/dashboard";
+import type { FeedItem } from "@/types/dashboard";
 
 vi.mock("@/hooks/useYouTubeData", () => ({ useYouTubeData: vi.fn() }));
 vi.mock("@/contexts/useVideoPlayer", () => ({
@@ -44,17 +44,6 @@ const LIVE_ITEM: FeedItem = {
   isLive: true,
 };
 
-const PUBLISHER_WITH_CHANNEL: PublisherConfig = {
-  id: "pub1",
-  name: "Publisher 1",
-  youtubeChannelId: "UC1234",
-};
-
-const PUBLISHER_WITHOUT_CHANNEL: PublisherConfig = {
-  id: "pub2",
-  name: "Publisher 2",
-};
-
 function mockFeed(
   overrides: Partial<ReturnType<typeof useYouTubeData>> = {},
 ): void {
@@ -65,7 +54,7 @@ function mockFeed(
     error: null,
     refresh: vi.fn(),
     refreshDisabled: false,
-    filteredPublishers: [PUBLISHER_WITH_CHANNEL],
+    hasConfiguredChannels: true,
     ...overrides,
   });
 }
@@ -104,14 +93,14 @@ describe("LiveStreamsWidget", () => {
 
   it("shows not-configured message when VITE_YOUTUBE_API_KEY is absent", () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", ""); // clear any value from .env
-    mockFeed({ filteredPublishers: [PUBLISHER_WITH_CHANNEL] });
+    mockFeed({ hasConfiguredChannels: true });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.getByText(/VITE_YOUTUBE_API_KEY/)).toBeTruthy();
   });
 
   it("shows no-live-streams message when key is set and publishers have channels but no streams", () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    mockFeed({ filteredPublishers: [PUBLISHER_WITH_CHANNEL] });
+    mockFeed({ hasConfiguredChannels: true });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.getByText(/nem találtunk élő közvetítést/)).toBeTruthy();
   });
@@ -130,7 +119,7 @@ describe("LiveStreamsWidget", () => {
 
   it("shows not-configured message when publishers have no channel info", () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    mockFeed({ filteredPublishers: [PUBLISHER_WITHOUT_CHANNEL] });
+    mockFeed({ hasConfiguredChannels: false });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.getByText(/VITE_YOUTUBE_API_KEY/)).toBeTruthy();
   });

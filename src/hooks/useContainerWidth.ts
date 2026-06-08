@@ -22,7 +22,12 @@ export function useContainerWidth({ threshold = 800 } = {}): {
     [threshold],
   );
 
-  React.useEffect(() => () => { observerRef.current?.disconnect(); }, []);
+  React.useEffect(
+    () => () => {
+      observerRef.current?.disconnect();
+    },
+    [],
+  );
 
   return { ref, isWide };
 }

@@ -2,6 +2,7 @@ import * as React from "react";
 import { fetchRSSFeed } from "@/lib/fetchers/rss";
 import { publishers } from "@/lib/publisher-config";
 import { useCooldown } from "@/hooks/useCooldown";
+import { sortByDateDesc } from "@/lib/utils";
 import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 
 export function useRSSFeed(
@@ -54,13 +55,7 @@ export function useRSSFeed(
         (r): r is PromiseRejectedResult => r.status === "rejected",
       );
 
-      const sorted = successful
-        .sort(
-          (a, b) =>
-            new Date(b.publishedAt).getTime() -
-            new Date(a.publishedAt).getTime(),
-        )
-        .slice(0, 5);
+      const sorted = successful.sort(sortByDateDesc).slice(0, 5);
 
       if (sorted.length > 0) {
         setItems(sorted);

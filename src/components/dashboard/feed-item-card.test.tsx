@@ -66,6 +66,11 @@ describe("FeedItemCard – full mode", () => {
     rerender(<FeedItemCard item={ITEM} />);
     expect(screen.getByText("Source Name")).toBeTruthy();
   });
+
+  it("omits the description paragraph when neither description nor descriptionFallback is set", () => {
+    const { container } = render(<FeedItemCard item={ITEM} />);
+    expect(container.querySelectorAll("p")).toHaveLength(1); // only source/channelName
+  });
 });
 
 describe("FeedItemCard – compact mode", () => {
