@@ -12,6 +12,10 @@ export function useCooldown(cooldownMs = 10000): {
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+        timerRef.current = null;
+        // Reset the guard so StrictMode's remount can start a fresh timer (state is preserved,
+        // the re-triggered setDisabled(true) is a no-op and the new timer eventually resets it).
+        disabledRef.current = false;
       }
     };
   }, []);

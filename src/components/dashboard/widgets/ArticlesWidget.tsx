@@ -27,6 +27,7 @@ export function ArticlesWidget({ publisherIds }: { publisherIds: string[] }) {
           size="sm"
           onClick={refresh}
           disabled={refreshDisabled}
+          className="cursor-pointer"
         >
           Frissítés
         </Button>

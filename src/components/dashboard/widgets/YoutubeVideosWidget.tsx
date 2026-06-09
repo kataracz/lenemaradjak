@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
+import { PaginationControls } from "@/components/dashboard/pagination-controls";
 import { useYouTubeData } from "@/hooks/useYouTubeData";
+import { usePagination } from "@/hooks/usePagination";
 import { useVideoPlayer } from "@/contexts/useVideoPlayer";
 import { useContainerWidth } from "@/hooks/useContainerWidth";
 
@@ -14,19 +16,37 @@ export function YoutubeVideosWidget({
     useYouTubeData(publisherIds);
   const { setCurrentVideo } = useVideoPlayer();
   const { ref: containerRef, isWide } = useContainerWidth();
+  const { page, totalPages, paginatedItems, prevPage, nextPage, resetPage } =
+    usePagination(videos, 10);
+
+  const handleRefresh = () => {
+    resetPage();
+    refresh();
+  };
 
   return (
     <DashboardCard
       title="Videók"
       actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          disabled={refreshDisabled}
-        >
-          Frissítés
-        </Button>
+        <div className="flex items-center gap-2">
+          {totalPages > 1 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPrev={prevPage}
+              onNext={nextPage}
+            />
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshDisabled}
+            className="cursor-pointer"
+          >
+            Frissítés
+          </Button>
+        </div>
       }
     >
       {loading ? (
@@ -52,7 +72,7 @@ export function YoutubeVideosWidget({
                   : "divide-y divide-border/60"
               }
             >
-              {videos.map((item) => (
+              {paginatedItems.map((item) => (
                 <div
                   key={item.id}
                   className={isWide ? "w-48 shrink-0" : undefined}

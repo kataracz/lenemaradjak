@@ -39,6 +39,31 @@ vi.mock("@/components/dashboard/feed-item-card", () => ({
     </div>
   ),
 }));
+vi.mock("@/components/dashboard/pagination-controls", () => ({
+  PaginationControls: ({
+    page,
+    totalPages,
+    onPrev,
+    onNext,
+  }: {
+    page: number;
+    totalPages: number;
+    onPrev: () => void;
+    onNext: () => void;
+  }) => (
+    <div data-testid="pagination">
+      <button data-testid="prev-page" onClick={onPrev}>
+        prev
+      </button>
+      <span data-testid="page-indicator">
+        {page}/{totalPages}
+      </span>
+      <button data-testid="next-page" onClick={onNext}>
+        next
+      </button>
+    </div>
+  ),
+}));
 
 import { useYouTubeData } from "@/hooks/useYouTubeData";
 import { useVideoPlayer } from "@/contexts/useVideoPlayer";
@@ -119,5 +144,53 @@ describe("YoutubeVideosWidget", () => {
     render(<YoutubeVideosWidget publisherIds={[]} />);
     fireEvent.click(screen.getByTestId("play-btn"));
     expect(setCurrentVideo).toHaveBeenCalledWith(ITEM);
+  });
+
+  it("shows no pagination when videos fit on one page", () => {
+    mockFeed({ videos: [ITEM] });
+    render(<YoutubeVideosWidget publisherIds={[]} />);
+    expect(screen.queryByTestId("pagination")).toBeNull();
+  });
+
+  it("shows pagination when videos exceed page size", () => {
+    const manyVideos = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `vid${String(i)}`,
+      title: `Video ${String(i)}`,
+    }));
+    mockFeed({ videos: manyVideos });
+    render(<YoutubeVideosWidget publisherIds={[]} />);
+    expect(screen.getByTestId("pagination")).toBeTruthy();
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
+    expect(screen.getAllByTestId("feed-item")).toHaveLength(10);
+  });
+
+  it("navigates to next page showing remaining items", () => {
+    const manyVideos = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `vid${String(i)}`,
+      title: `Video ${String(i)}`,
+    }));
+    mockFeed({ videos: manyVideos });
+    render(<YoutubeVideosWidget publisherIds={[]} />);
+    fireEvent.click(screen.getByTestId("next-page"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("2/2");
+    expect(screen.getAllByTestId("feed-item")).toHaveLength(1);
+  });
+
+  it("resets to page 1 when refresh is called", () => {
+    const refresh = vi.fn();
+    const manyVideos = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `vid${String(i)}`,
+      title: `Video ${String(i)}`,
+    }));
+    mockFeed({ videos: manyVideos, refresh });
+    render(<YoutubeVideosWidget publisherIds={[]} />);
+    fireEvent.click(screen.getByTestId("next-page"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("2/2");
+    fireEvent.click(screen.getByText("Frissítés"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

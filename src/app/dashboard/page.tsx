@@ -53,6 +53,12 @@ const defaultLayouts: DashboardLayouts = {
 
 const breakpoints = { lg: 1280, md: 996, sm: 768, xs: 480, xxs: 0 };
 const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
+const GRID_MARGIN: [number, number] = [12, 12];
+const GRID_CONTAINER_PADDING: [number, number] = [8, 8];
+const DRAG_CONFIG = {
+  handle: ".drag-handle",
+  cancel: "a, button, input, select, textarea",
+};
 const publisherOptions = [{ id: "all", name: "Összes kiadó" }, ...publishers];
 
 export default function Page() {
@@ -116,13 +122,10 @@ export default function Page() {
                   breakpoints={breakpoints}
                   cols={cols}
                   rowHeight={28}
-                  margin={[12, 12]}
-                  containerPadding={[8, 8]}
+                  margin={GRID_MARGIN}
+                  containerPadding={GRID_CONTAINER_PADDING}
                   width={width}
-                  dragConfig={{
-                    handle: ".drag-handle",
-                    cancel: "a, button, input, select, textarea",
-                  }}
+                  dragConfig={DRAG_CONFIG}
                   onLayoutChange={handleLayoutChange}
                 >
                   {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {

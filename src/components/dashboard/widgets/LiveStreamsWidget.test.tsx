@@ -32,8 +32,34 @@ vi.mock("@/components/dashboard/feed-item-card", () => ({
     <div data-testid="feed-item">{item.title}</div>
   ),
 }));
+vi.mock("@/components/dashboard/pagination-controls", () => ({
+  PaginationControls: ({
+    page,
+    totalPages,
+    onPrev,
+    onNext,
+  }: {
+    page: number;
+    totalPages: number;
+    onPrev: () => void;
+    onNext: () => void;
+  }) => (
+    <div data-testid="pagination">
+      <button data-testid="prev-page" onClick={onPrev}>
+        prev
+      </button>
+      <span data-testid="page-indicator">
+        {page}/{totalPages}
+      </span>
+      <button data-testid="next-page" onClick={onNext}>
+        next
+      </button>
+    </div>
+  ),
+}));
 
 import { useYouTubeData } from "@/hooks/useYouTubeData";
+import { fireEvent } from "@testing-library/react";
 import { LiveStreamsWidget } from "@/components/dashboard/widgets/LiveStreamsWidget";
 
 const LIVE_ITEM: FeedItem = {
@@ -122,5 +148,43 @@ describe("LiveStreamsWidget", () => {
     mockFeed({ hasConfiguredChannels: false });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.getByText(/VITE_YOUTUBE_API_KEY/)).toBeTruthy();
+  });
+
+  it("shows no pagination when streams fit on one page", () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+    mockFeed({ streams: [LIVE_ITEM] });
+    render(<LiveStreamsWidget publisherIds={[]} />);
+    expect(screen.queryByTestId("pagination")).toBeNull();
+  });
+
+  it("shows pagination when streams exceed page size", () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+    const manyStreams = Array.from({ length: 11 }, (_, i) => ({
+      ...LIVE_ITEM,
+      id: `live${String(i)}`,
+      title: `Live ${String(i)}`,
+    }));
+    mockFeed({ streams: manyStreams });
+    render(<LiveStreamsWidget publisherIds={[]} />);
+    expect(screen.getByTestId("pagination")).toBeTruthy();
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
+    expect(screen.getAllByTestId("feed-item")).toHaveLength(10);
+  });
+
+  it("resets to page 1 when refresh is called", () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+    const refresh = vi.fn();
+    const manyStreams = Array.from({ length: 11 }, (_, i) => ({
+      ...LIVE_ITEM,
+      id: `live${String(i)}`,
+      title: `Live ${String(i)}`,
+    }));
+    mockFeed({ streams: manyStreams, refresh });
+    render(<LiveStreamsWidget publisherIds={[]} />);
+    fireEvent.click(screen.getByTestId("next-page"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("2/2");
+    fireEvent.click(screen.getByText("Frissítés"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });
