@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, waitFor, act } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import type { FeedItem } from "@/types/dashboard";
 
 vi.mock("@/lib/publisher-config", () => ({
@@ -105,19 +105,15 @@ describe("useYouTubeData", () => {
     expect(result.current.error).toBe("Egy YouTube csatorna nem töltődött be.");
   });
 
-  it("refreshDisabled becomes true after refresh() is called", async () => {
+  it("refreshDisabled is true from initial load and stays true until cooldown expires", async () => {
     vi.mocked(fetchYouTubeData).mockResolvedValue({ videos: [], streams: [] });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
 
+    expect(result.current.refreshDisabled).toBe(true);
+
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
-
-    expect(result.current.refreshDisabled).toBe(false);
-
-    act(() => {
-      result.current.refresh();
     });
 
     expect(result.current.refreshDisabled).toBe(true);

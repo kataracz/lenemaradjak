@@ -2,6 +2,8 @@ import "@videojs/react/video/skin.css";
 import * as React from "react";
 import Draggable from "react-draggable";
 import { Resizable } from "react-resizable";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { DragDropVerticalIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useVideoPlayer } from "@/contexts/useVideoPlayer";
 import { extractYouTubeVideoId, buildYouTubeEmbedUrl } from "@/lib/youtube";
@@ -47,9 +49,15 @@ export function VideoPlayerFloatingWidget() {
           >
             <div
               data-testid="drag-handle"
-              className="drag-handle flex cursor-grab items-center justify-between rounded-t-2xl bg-muted/80 px-3 py-2 select-none active:cursor-grabbing"
+              className="drag-handle flex cursor-grab items-center gap-2 rounded-t-2xl bg-muted/80 px-3 py-2 select-none active:cursor-grabbing"
             >
-              <span className="truncate text-xs font-medium text-muted-foreground">
+              <HugeiconsIcon
+                icon={DragDropVerticalIcon}
+                size={16}
+                aria-hidden="true"
+                className="shrink-0 text-muted-foreground/60"
+              />
+              <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
                 {currentVideo.title}
               </span>
               <Button

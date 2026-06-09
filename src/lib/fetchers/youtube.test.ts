@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fetchYouTubeData, clearYouTubeCaches } from "@/lib/fetchers/youtube";
-import type { FeedItem, PublisherConfig } from "@/types/dashboard";
+import type { PublisherConfig } from "@/types/dashboard";
 
 const CHANNEL_ID = "UCM-1sd-cXSuCsfWp8QMY_OQ";
 
@@ -196,7 +196,7 @@ describe("fetchYouTubeData", () => {
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    const result = await fetchYouTubeData([PUBLISHER, PUBLISHER_2], 5);
+    const result = await fetchYouTubeData([PUBLISHER, PUBLISHER_2]);
     expect(result.videos).toHaveLength(1);
     expect(result.videos[0].title).toBe("Working");
     expect(result.partialError).toMatch(/YouTube csatorna nem töltődött be/);
@@ -244,7 +244,7 @@ describe("fetchYouTubeData", () => {
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    const { videos } = await fetchYouTubeData([PUBLISHER, PUBLISHER_2], 5);
+    const { videos } = await fetchYouTubeData([PUBLISHER, PUBLISHER_2]);
     expect(videos[0].title).toBe("Newer");
     expect(videos[1].title).toBe("Older");
   });

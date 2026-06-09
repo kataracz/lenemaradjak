@@ -5,6 +5,7 @@ export function useCooldown(cooldownMs = 10000): {
   trigger: () => boolean;
 } {
   const [disabled, setDisabled] = React.useState(false);
+  const disabledRef = React.useRef(false);
   const timerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
@@ -16,13 +17,15 @@ export function useCooldown(cooldownMs = 10000): {
   }, []);
 
   const trigger = React.useCallback(() => {
-    if (disabled) return false;
+    if (disabledRef.current) return false;
+    disabledRef.current = true;
     setDisabled(true);
     timerRef.current = window.setTimeout(() => {
+      disabledRef.current = false;
       setDisabled(false);
     }, cooldownMs);
     return true;
-  }, [cooldownMs, disabled]);
+  }, [cooldownMs]);
 
   return { disabled, trigger };
 }

@@ -139,3 +139,12 @@
     @apply font-sans;
   }
 }
+
+.react-resizable-handle {
+  background-image: none !important;
+}
+
+.react-resizable-handle::after {
+  width: 10px !important;
+  height: 10px !important;
+}

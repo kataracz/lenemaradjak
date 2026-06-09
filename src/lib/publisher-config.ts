@@ -34,7 +34,7 @@ export const publishers: PublisherConfig[] = [
     name: "Válasz Online",
     articleFeedUrl: "https://www.valaszonline.hu/feed/",
     youtubeChannelHandle: "@valaszonline",
-    youtubeChannelId: "UCnlMwO6KqQQKn7byzHRbvlQ",
+    youtubeChannelId: "UCk4Xm32zEO4ymAxK1NJ5Tmw",
   },
   {
     id: "direkt36",

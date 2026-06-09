@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, waitFor, act, cleanup } from "@testing-library/react";
+import { renderHook, waitFor, cleanup } from "@testing-library/react";
 import type { FeedItem } from "@/types/dashboard";
 
 vi.mock("@/lib/fetchers/rss", () => ({ fetchRSSFeed: vi.fn() }));
@@ -141,21 +141,17 @@ describe("useRSSFeed", () => {
     );
   });
 
-  it("refreshDisabled becomes true after refresh() is called", async () => {
+  it("refreshDisabled is true from initial load and stays true until cooldown expires", async () => {
     vi.mocked(fetchRSSFeed).mockResolvedValue([]);
 
     const { result } = renderHook(() =>
       useRSSFeed(IDS_PUB1, getUrl, getPartialError),
     );
 
+    expect(result.current.refreshDisabled).toBe(true);
+
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
-
-    expect(result.current.refreshDisabled).toBe(false);
-
-    act(() => {
-      result.current.refresh();
     });
 
     expect(result.current.refreshDisabled).toBe(true);

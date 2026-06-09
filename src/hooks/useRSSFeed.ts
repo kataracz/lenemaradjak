@@ -61,7 +61,7 @@ export function useRSSFeed(
         (r): r is PromiseRejectedResult => r.status === "rejected",
       );
 
-      const sorted = successful.sort(sortByDateDesc).slice(0, 5);
+      const sorted = successful.sort(sortByDateDesc);
 
       if (sorted.length > 0) {
         setItems(sorted);
@@ -81,17 +81,18 @@ export function useRSSFeed(
     }
   }, [filteredPublishers, getFeedUrl, partialErrorMessage]);
 
+  const { disabled: refreshDisabled, trigger: triggerRefresh } =
+    useCooldown(60000);
+
   React.useEffect(() => {
+    triggerRefresh();
     const timerId = window.setTimeout(() => {
       void load();
     }, 0);
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [load]);
-
-  const { disabled: refreshDisabled, trigger: triggerRefresh } =
-    useCooldown(10000);
+  }, [load, triggerRefresh]);
 
   const refresh = React.useCallback(() => {
     if (triggerRefresh()) void load();

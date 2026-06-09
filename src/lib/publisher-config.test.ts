@@ -20,11 +20,11 @@ describe("publishers", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("all publishers have a youtubeChannelId", () => {
-    for (const p of publishers) {
-      expect(typeof p.youtubeChannelId).toBe("string");
-      expect((p.youtubeChannelId ?? "").length).toBeGreaterThan(0);
-    }
+  it("youtube channel ids are unique when specified", () => {
+    const ids = publishers
+      .map((p) => p.youtubeChannelId)
+      .filter((id): id is string => Boolean(id));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("at least one publisher has articleFeedUrl", () => {

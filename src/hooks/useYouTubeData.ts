@@ -27,7 +27,7 @@ export function useYouTubeData(publisherIds: string[]): {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchYouTubeData(filteredPublishers, 5);
+      const result = await fetchYouTubeData(filteredPublishers);
       setVideos(result.videos);
       setStreams(result.streams);
       setError(result.partialError ?? null);
@@ -41,17 +41,18 @@ export function useYouTubeData(publisherIds: string[]): {
     }
   }, [filteredPublishers]);
 
+  const { disabled: refreshDisabled, trigger: triggerRefresh } =
+    useCooldown(60000);
+
   React.useEffect(() => {
+    triggerRefresh();
     const timerId = window.setTimeout(() => {
       void load();
     }, 0);
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [load]);
-
-  const { disabled: refreshDisabled, trigger: triggerRefresh } =
-    useCooldown(10000);
+  }, [load, triggerRefresh]);
 
   const refresh = React.useCallback(() => {
     if (triggerRefresh()) void load();

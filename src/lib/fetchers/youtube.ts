@@ -350,7 +350,6 @@ function fetchChannelData(
 
 export async function fetchYouTubeData(
   publishers: PublisherConfig[],
-  maxItems = 5,
 ): Promise<{ videos: FeedItem[]; streams: FeedItem[]; partialError?: string }> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -370,13 +369,24 @@ export async function fetchYouTubeData(
 
   const allVideos: FeedItem[] = [];
   const allStreams: FeedItem[] = [];
+  const seenIds = new Set<string>();
   let firstError: PromiseRejectedResult | undefined;
   let failedCount = 0;
 
   for (const result of results) {
     if (result.status === "fulfilled") {
-      allVideos.push(...result.value.videos);
-      allStreams.push(...result.value.streams);
+      for (const v of result.value.videos) {
+        if (!seenIds.has(v.id)) {
+          seenIds.add(v.id);
+          allVideos.push(v);
+        }
+      }
+      for (const s of result.value.streams) {
+        if (!seenIds.has(s.id)) {
+          seenIds.add(s.id);
+          allStreams.push(s);
+        }
+      }
     } else {
       console.error(result.reason);
       firstError ??= result;
@@ -384,8 +394,8 @@ export async function fetchYouTubeData(
     }
   }
 
-  const videos = allVideos.sort(sortByDateDesc).slice(0, maxItems);
-  const streams = allStreams.sort(sortByDateDesc).slice(0, maxItems);
+  const videos = allVideos.sort(sortByDateDesc);
+  const streams = allStreams.sort(sortByDateDesc);
 
   // Only throw when everything failed and there is nothing to show.
   if (videos.length === 0 && streams.length === 0 && firstError) {
