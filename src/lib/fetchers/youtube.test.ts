@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fetchYouTubeData, clearYouTubeCaches } from "@/lib/fetchers/youtube";
 import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 
 const CHANNEL_ID = "UCM-1sd-cXSuCsfWp8QMY_OQ";
@@ -53,19 +54,10 @@ function makeVideosResponse(
 }
 
 describe("fetchYouTubeData", () => {
-  let fetchYouTubeData: (
-    publishers: PublisherConfig[],
-    maxItems?: number,
-  ) => Promise<{
-    videos: FeedItem[];
-    streams: FeedItem[];
-    partialError?: string;
-  }>;
-
   beforeEach(() => {
-    vi.resetModules();
     vi.unstubAllEnvs();
     localStorage.clear();
+    clearYouTubeCaches();
   });
 
   afterEach(() => {
@@ -75,8 +67,6 @@ describe("fetchYouTubeData", () => {
 
   it("returns empty arrays when VITE_YOUTUBE_API_KEY is not set", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
     const result = await fetchYouTubeData([PUBLISHER]);
     expect(result.videos).toEqual([]);
     expect(result.streams).toEqual([]);
@@ -84,8 +74,6 @@ describe("fetchYouTubeData", () => {
 
   it("returns correctly shaped videos from playlist + videos APIs", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const mockFetch = vi
       .fn()
@@ -108,8 +96,6 @@ describe("fetchYouTubeData", () => {
 
   it("puts live items in streams, not videos", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const mockFetch = vi
       .fn()
@@ -132,8 +118,6 @@ describe("fetchYouTubeData", () => {
 
   it("returns empty streams (does not throw) when no live streams found", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const mockFetch = vi
       .fn()
@@ -147,8 +131,6 @@ describe("fetchYouTubeData", () => {
 
   it("returns cached result without a second fetch", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const mockFetch = vi
       .fn()
@@ -166,8 +148,6 @@ describe("fetchYouTubeData", () => {
 
   it("deduplicates inflight parallel requests", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const mockFetch = vi
       .fn()
@@ -185,8 +165,6 @@ describe("fetchYouTubeData", () => {
 
   it("throws when the playlist API returns a non-ok response", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeErrorResponse(403)));
 
@@ -195,8 +173,6 @@ describe("fetchYouTubeData", () => {
 
   it("returns partialError when one publisher fails and another succeeds", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     const UPLOADS_1 = "UUM-1sd-cXSuCsfWp8QMY_OQ";
     const UPLOADS_2 = "UUEFpEvuosfPGlV1VyUF6QOA";
@@ -228,8 +204,6 @@ describe("fetchYouTubeData", () => {
 
   it("sorts videos by publishedAt descending across multiple publishers", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-    const mod = await import("@/lib/fetchers/youtube");
-    fetchYouTubeData = mod.fetchYouTubeData;
 
     // Pub1 uploads playlist: "UU" + CHANNEL_ID.slice(2)
     const UPLOADS_1 = "UUM-1sd-cXSuCsfWp8QMY_OQ";

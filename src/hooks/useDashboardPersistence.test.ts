@@ -30,10 +30,7 @@ describe("useDashboardPersistence", () => {
     act(() => {
       result.current.setLayouts(newLayouts);
     });
-    const stored = localStorage.getItem(KEY);
-    expect(stored).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(JSON.parse(stored!)).toEqual(newLayouts);
+    expect(localStorage.getItem(KEY)).toBe(JSON.stringify(newLayouts));
   });
 
   it("returns defaultLayouts when stored JSON is corrupted", () => {

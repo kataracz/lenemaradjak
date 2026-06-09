@@ -70,8 +70,8 @@ describe("VideoPlayerFloatingWidget", () => {
   });
 
   it("renders nothing when currentVideo is null", () => {
-    const { container } = setup(null);
-    expect(container.querySelector('[aria-label="Videólejátszó"]')).toBeNull();
+    setup(null);
+    expect(screen.queryByLabelText("Videólejátszó")).toBeNull();
   });
 
   it("renders the widget when currentVideo is set", () => {
@@ -107,8 +107,8 @@ describe("VideoPlayerFloatingWidget", () => {
   });
 
   it("has a drag-handle element", () => {
-    const { container } = setup(YOUTUBE_VIDEO);
-    expect(container.querySelector(".drag-handle")).not.toBeNull();
+    setup(YOUTUBE_VIDEO);
+    expect(screen.getByTestId("drag-handle")).toBeTruthy();
   });
 
   it("initial container width is 320px", () => {

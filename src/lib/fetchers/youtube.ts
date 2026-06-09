@@ -2,9 +2,8 @@ import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 import { PROXY_HOSTS } from "@/lib/proxy-hosts";
 import { sortByDateDesc } from "@/lib/utils";
 
-const apiKey: string | undefined = import.meta.env.VITE_YOUTUBE_API_KEY as
-  | string
-  | undefined;
+const getApiKey = () =>
+  import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined;
 
 const CHANNEL_ID_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const channelIdCache = new Map<string, { expires: number; id: string }>();
@@ -92,9 +91,7 @@ function saveToCache<T>(
   ttl: number,
   data: T,
 ) {
-  const entry = { expires: Date.now() + ttl, ...data } as {
-    expires: number;
-  } & T;
+  const entry = Object.assign({ expires: Date.now() + ttl }, data);
   memoryCache.set(storageKey, entry);
 
   if (typeof window === "undefined") return;
@@ -172,6 +169,7 @@ async function resolveYouTubeChannelId(
     return publisher.youtubeChannelId;
   }
 
+  const apiKey = getApiKey();
   if (!apiKey) return undefined;
   const handle = publisher.youtubeChannelHandle;
   if (!handle) return undefined;
@@ -268,10 +266,11 @@ function fetchChannelData(
   publisher: PublisherConfig,
   channelId: string,
 ): Promise<{ videos: FeedItem[]; streams: FeedItem[] }> {
-  if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
-
   const cached = loadCachedChannelData(channelId);
   if (cached) return Promise.resolve(cached);
+
+  const apiKey = getApiKey();
+  if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
 
   return withInflight(channelDataInflight, channelId, async () => {
     // Fetch 10 items to ensure a currently-live stream is captured even when
@@ -333,7 +332,7 @@ function fetchChannelData(
       thumbnailUrl: item.snippet?.thumbnails?.medium?.url,
       channelName: item.snippet?.channelTitle,
       source: publisher.name,
-      isLive: isLive || undefined,
+      isLive: isLive ? true : undefined,
     });
 
     const videos = rawItems
@@ -353,6 +352,7 @@ export async function fetchYouTubeData(
   publishers: PublisherConfig[],
   maxItems = 5,
 ): Promise<{ videos: FeedItem[]; streams: FeedItem[]; partialError?: string }> {
+  const apiKey = getApiKey();
   if (!apiKey) {
     return { videos: [], streams: [] };
   }
@@ -400,4 +400,11 @@ export async function fetchYouTubeData(
       : undefined;
 
   return { videos, streams, partialError };
+}
+
+export function clearYouTubeCaches(): void {
+  channelIdCache.clear();
+  channelDataCache.clear();
+  channelDataInflight.clear();
+  channelResolutionInflight.clear();
 }

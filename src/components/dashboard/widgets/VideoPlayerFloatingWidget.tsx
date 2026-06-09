@@ -45,7 +45,10 @@ export function VideoPlayerFloatingWidget() {
             className="relative flex flex-col rounded-2xl bg-card shadow-xl ring-1 ring-foreground/10"
             aria-label="Videólejátszó"
           >
-            <div className="drag-handle flex cursor-grab items-center justify-between rounded-t-2xl bg-muted/80 px-3 py-2 select-none active:cursor-grabbing">
+            <div
+              data-testid="drag-handle"
+              className="drag-handle flex cursor-grab items-center justify-between rounded-t-2xl bg-muted/80 px-3 py-2 select-none active:cursor-grabbing"
+            >
               <span className="truncate text-xs font-medium text-muted-foreground">
                 {currentVideo.title}
               </span>

@@ -9,7 +9,13 @@ export function useRSSFeed(
   publisherIds: string[],
   getFeedUrl: (publisher: PublisherConfig) => string | undefined,
   partialErrorMessage: (count: number) => string,
-) {
+): {
+  items: FeedItem[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => void;
+  refreshDisabled: boolean;
+} {
   const [items, setItems] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

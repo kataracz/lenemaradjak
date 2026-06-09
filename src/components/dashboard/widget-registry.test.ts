@@ -50,7 +50,7 @@ describe("findWidgetDefinition", () => {
   });
 
   it("returns undefined for an unknown type", () => {
-    const result = findWidgetDefinition("unknown" as DashboardWidgetType);
+    const result = findWidgetDefinition("unknown");
     expect(result).toBeUndefined();
   });
 });

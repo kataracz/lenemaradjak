@@ -18,11 +18,11 @@ Copy the example file and fill in the values:
 cp example.env .env
 ```
 
-| Variable | Required | Description |
-| --- | --- | --- |
+| Variable               | Required                 | Description                                                                                                                          |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `VITE_YOUTUBE_API_KEY` | Yes for YouTube features | YouTube Data API v3 key. Without it the live streams and YouTube video widgets will not load. Get one from the Google Cloud Console. |
-| `ALLOWED_ORIGIN` | Proxy only | Origin the proxy allows CORS requests from (default: `http://localhost:5173`). |
-| `DEV_CONTACT` | Optional | Contact address included in the `User-Agent` header sent to upstream RSS servers. |
+| `ALLOWED_ORIGIN`       | Proxy only               | Origin the proxy allows CORS requests from (default: `http://localhost:5173`).                                                       |
+| `DEV_CONTACT`          | Optional                 | Contact address included in the `User-Agent` header sent to upstream RSS servers.                                                    |
 
 # Setup
 
@@ -201,27 +201,27 @@ npm test
 
 Current coverage:
 
-| File | What is tested |
-| --- | --- |
-| `src/lib/utils.test.ts` | `cn()` class-name utility |
-| `src/lib/persistence.test.ts` | `loadDashboardLayouts` / `saveDashboardLayouts` (localStorage round-trip, malformed JSON, quota errors) |
-| `src/lib/publisher-config.test.ts` | `publishers` array shape (unique IDs, required fields); `defaultPublisherIds` ordering |
-| `src/lib/youtube.test.ts` | `extractYouTubeVideoId` (watch URLs, short URLs, edge cases); `buildYouTubeEmbedUrl` (domain, params, autoplay) |
-| `src/lib/fetchers/rss.test.ts` | RSS feed fetcher — XML parsing, proxy routing, cache hits, inflight dedup, HTTP errors |
-| `src/lib/fetchers/youtube.test.ts` | `fetchYouTubeData` — response shaping, live vs video classification, caching, inflight dedup, partial errors, multi-publisher sort |
-| `src/hooks/useCooldown.test.ts` | Cooldown hook — initial state, trigger, double-trigger, expiry, unmount cleanup |
-| `src/hooks/useDashboardPersistence.test.ts` | Dashboard layout persistence hook — empty storage, save/load round-trip, corrupted data |
-| `src/hooks/useRSSFeed.test.ts` | RSS feed hook — initial state, multi-feed load/sort, full/partial errors, publisher filtering, cooldown |
-| `src/hooks/useYouTubeData.test.ts` | YouTube data hook — load, error, partial error, configured-channels guard, cooldown |
-| `src/hooks/useContainerWidth.test.ts` | ResizeObserver-based width hook — threshold comparisons, custom threshold, observer cleanup |
-| `src/contexts/useVideoPlayer.test.tsx` | `VideoPlayerProvider` render; `useVideoPlayer` throws outside provider |
-| `src/components/dashboard/feed-item-card.test.tsx` | `FeedItemCard` full and compact modes — link, description fallback, thumbnail play button, channel name |
-| `src/components/dashboard/widget-registry.test.ts` | `dashboardWidgets` registry shape; `findWidgetDefinition` lookup and miss |
-| `src/components/dashboard/widgets/ArticlesWidget.test.tsx` | Loading/loaded/error/empty states; refresh button |
-| `src/components/dashboard/widgets/LiveStreamsWidget.test.tsx` | Loading/loaded/error/partial-error states; no-key and no-channel messages |
-| `src/components/dashboard/widgets/PodcastsWidget.test.tsx` | Loading/loaded/error/empty states; refresh button |
-| `src/components/dashboard/widgets/VideoPlayerFloatingWidget.test.tsx` | Null state, YouTube embed URL, non-YouTube error, close button, resize |
-| `src/components/dashboard/widgets/YoutubeVideosWidget.test.tsx` | Loading/loaded/error/empty/partial-error states; play button triggers context |
+| File                                                                  | What is tested                                                                                                                     |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/utils.test.ts`                                               | `cn()` class-name utility                                                                                                          |
+| `src/lib/persistence.test.ts`                                         | `loadDashboardLayouts` / `saveDashboardLayouts` (localStorage round-trip, malformed JSON, quota errors)                            |
+| `src/lib/publisher-config.test.ts`                                    | `publishers` array shape (unique IDs, required fields); `defaultPublisherIds` ordering                                             |
+| `src/lib/youtube.test.ts`                                             | `extractYouTubeVideoId` (watch URLs, short URLs, edge cases); `buildYouTubeEmbedUrl` (domain, params, autoplay)                    |
+| `src/lib/fetchers/rss.test.ts`                                        | RSS feed fetcher — XML parsing, proxy routing, cache hits, inflight dedup, HTTP errors                                             |
+| `src/lib/fetchers/youtube.test.ts`                                    | `fetchYouTubeData` — response shaping, live vs video classification, caching, inflight dedup, partial errors, multi-publisher sort |
+| `src/hooks/useCooldown.test.ts`                                       | Cooldown hook — initial state, trigger, double-trigger, expiry, unmount cleanup                                                    |
+| `src/hooks/useDashboardPersistence.test.ts`                           | Dashboard layout persistence hook — empty storage, save/load round-trip, corrupted data                                            |
+| `src/hooks/useRSSFeed.test.ts`                                        | RSS feed hook — initial state, multi-feed load/sort, full/partial errors, publisher filtering, cooldown                            |
+| `src/hooks/useYouTubeData.test.ts`                                    | YouTube data hook — load, error, partial error, configured-channels guard, cooldown                                                |
+| `src/hooks/useContainerWidth.test.ts`                                 | ResizeObserver-based width hook — threshold comparisons, custom threshold, observer cleanup                                        |
+| `src/contexts/useVideoPlayer.test.tsx`                                | `VideoPlayerProvider` render; `useVideoPlayer` throws outside provider                                                             |
+| `src/components/dashboard/feed-item-card.test.tsx`                    | `FeedItemCard` full and compact modes — link, description fallback, thumbnail play button, channel name                            |
+| `src/components/dashboard/widget-registry.test.ts`                    | `dashboardWidgets` registry shape; `findWidgetDefinition` lookup and miss                                                          |
+| `src/components/dashboard/widgets/ArticlesWidget.test.tsx`            | Loading/loaded/error/empty states; refresh button                                                                                  |
+| `src/components/dashboard/widgets/LiveStreamsWidget.test.tsx`         | Loading/loaded/error/partial-error states; no-key and no-channel messages                                                          |
+| `src/components/dashboard/widgets/PodcastsWidget.test.tsx`            | Loading/loaded/error/empty states; refresh button                                                                                  |
+| `src/components/dashboard/widgets/VideoPlayerFloatingWidget.test.tsx` | Null state, YouTube embed URL, non-YouTube error, close button, resize                                                             |
+| `src/components/dashboard/widgets/YoutubeVideosWidget.test.tsx`       | Loading/loaded/error/empty/partial-error states; play button triggers context                                                      |
 
 # TypeScript
 

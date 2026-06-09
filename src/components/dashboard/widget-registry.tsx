@@ -40,6 +40,8 @@ export const dashboardWidgets: DashboardWidgetDefinition[] = [
   },
 ];
 
-export function findWidgetDefinition(type: DashboardWidgetType) {
+export function findWidgetDefinition(
+  type: string,
+): DashboardWidgetDefinition | undefined {
   return dashboardWidgets.find((widget) => widget.id === type);
 }

@@ -4,7 +4,15 @@ import { useCooldown } from "@/hooks/useCooldown";
 import { fetchYouTubeData } from "@/lib/fetchers/youtube";
 import type { FeedItem } from "@/types/dashboard";
 
-export function useYouTubeData(publisherIds: string[]) {
+export function useYouTubeData(publisherIds: string[]): {
+  videos: FeedItem[];
+  streams: FeedItem[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => void;
+  refreshDisabled: boolean;
+  hasConfiguredChannels: boolean;
+} {
   const [videos, setVideos] = React.useState<FeedItem[]>([]);
   const [streams, setStreams] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);

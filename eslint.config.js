@@ -22,6 +22,12 @@ export default defineConfig([
       reactDom.configs.recommended,
       prettierConfig,
     ],
+    rules: {
+      "react-refresh/only-export-components": [
+        "error",
+        { allowConstantExport: true, allowExportNames: ["buttonVariants"] },
+      ],
+    },
     languageOptions: {
       parserOptions: {
         project: ["./tsconfig.node.json", "./tsconfig.app.json"],

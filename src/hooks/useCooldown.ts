@@ -1,6 +1,9 @@
 import * as React from "react";
 
-export function useCooldown(cooldownMs = 10000) {
+export function useCooldown(cooldownMs = 10000): {
+  disabled: boolean;
+  trigger: () => boolean;
+} {
   const [disabled, setDisabled] = React.useState(false);
   const timerRef = React.useRef<number | null>(null);
 
@@ -21,7 +24,7 @@ export function useCooldown(cooldownMs = 10000) {
     return true;
   }, [cooldownMs, disabled]);
 
-  return { disabled, trigger } as const;
+  return { disabled, trigger };
 }
 
 export default useCooldown;

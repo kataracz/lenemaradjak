@@ -10,7 +10,7 @@ import {
 import { findWidgetDefinition } from "@/components/dashboard/widget-registry";
 import { useDashboardPersistence } from "@/hooks/useDashboardPersistence";
 import { defaultPublisherIds, publishers } from "@/lib/publisher-config";
-import type { DashboardLayouts, DashboardWidgetType } from "@/types/dashboard";
+import type { DashboardLayouts } from "@/types/dashboard";
 import type { Layout } from "react-grid-layout";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -126,9 +126,7 @@ export default function Page() {
                   onLayoutChange={handleLayoutChange}
                 >
                   {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
-                    const widgetDef = findWidgetDefinition(
-                      item.i as DashboardWidgetType,
-                    );
+                    const widgetDef = findWidgetDefinition(item.i);
                     if (!widgetDef) {
                       return null;
                     }
