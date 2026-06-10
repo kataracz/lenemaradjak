@@ -348,17 +348,38 @@ function fetchChannelData(
   });
 }
 
-export async function fetchYouTubeData(
-  publishers: PublisherConfig[],
-): Promise<{ videos: FeedItem[]; streams: FeedItem[]; partialError?: string }> {
+function isYouTubeDataCached(publishers: PublisherConfig[]): boolean {
+  if (!getApiKey()) return true;
+
+  return publishers.every((publisher) => {
+    if (!publisher.youtubeChannelId && !publisher.youtubeChannelHandle) {
+      return true;
+    }
+
+    const channelId =
+      publisher.youtubeChannelId ?? loadCachedChannelId(publisher.id);
+    if (!channelId) return false;
+
+    return loadCachedChannelData(channelId) !== undefined;
+  });
+}
+
+export async function fetchYouTubeData(publishers: PublisherConfig[]): Promise<{
+  videos: FeedItem[];
+  streams: FeedItem[];
+  partialError?: string;
+  fromCache: boolean;
+}> {
+  const fromCache = isYouTubeDataCached(publishers);
+
   const apiKey = getApiKey();
   if (!apiKey) {
-    return { videos: [], streams: [] };
+    return { videos: [], streams: [], fromCache };
   }
 
   const resolvedPublishers = await resolveChannelPublishers(publishers);
   if (resolvedPublishers.length === 0) {
-    return { videos: [], streams: [] };
+    return { videos: [], streams: [], fromCache };
   }
 
   const results = await Promise.allSettled(
@@ -409,7 +430,7 @@ export async function fetchYouTubeData(
       ? `${failedCount === 1 ? "Egy" : String(failedCount)} YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek.`
       : undefined;
 
-  return { videos, streams, partialError };
+  return { videos, streams, partialError, fromCache };
 }
 
 export function clearYouTubeCaches(): void {

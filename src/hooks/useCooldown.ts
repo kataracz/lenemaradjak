@@ -3,6 +3,7 @@ import * as React from "react";
 export function useCooldown(cooldownMs = 10000): {
   disabled: boolean;
   trigger: () => boolean;
+  reset: () => void;
 } {
   const [disabled, setDisabled] = React.useState(false);
   const disabledRef = React.useRef(false);
@@ -31,7 +32,16 @@ export function useCooldown(cooldownMs = 10000): {
     return true;
   }, [cooldownMs]);
 
-  return { disabled, trigger };
+  const reset = React.useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    disabledRef.current = false;
+    setDisabled(false);
+  }, []);
+
+  return { disabled, trigger, reset };
 }
 
 export default useCooldown;

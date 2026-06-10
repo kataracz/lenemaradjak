@@ -51,6 +51,33 @@ describe("useCooldown", () => {
     expect(result.current.disabled).toBe(false);
   });
 
+  it("reset() clears disabled state and the pending timer", () => {
+    const { result } = renderHook(() => useCooldown(1000));
+    act(() => {
+      result.current.trigger();
+    });
+    expect(result.current.disabled).toBe(true);
+
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.disabled).toBe(false);
+
+    // The original timer should have been cleared, so a trigger() right
+    // after reset() starts a fresh cooldown rather than being blocked.
+    let returned: boolean | undefined;
+    act(() => {
+      returned = result.current.trigger();
+    });
+    expect(returned).toBe(true);
+    expect(result.current.disabled).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(result.current.disabled).toBe(false);
+  });
+
   it("unmounting during active cooldown does not throw", () => {
     const { result, unmount } = renderHook(() => useCooldown(1000));
     act(() => {

@@ -70,6 +70,7 @@ describe("fetchYouTubeData", () => {
     const result = await fetchYouTubeData([PUBLISHER]);
     expect(result.videos).toEqual([]);
     expect(result.streams).toEqual([]);
+    expect(result.fromCache).toBe(true);
   });
 
   it("returns correctly shaped videos from playlist + videos APIs", async () => {
@@ -86,12 +87,13 @@ describe("fetchYouTubeData", () => {
       );
     vi.stubGlobal("fetch", mockFetch);
 
-    const { videos } = await fetchYouTubeData([PUBLISHER]);
+    const { videos, fromCache } = await fetchYouTubeData([PUBLISHER]);
     expect(videos).toHaveLength(2);
     expect(videos[0].title).toBe("First");
     expect(videos[0].url).toBe("https://www.youtube.com/watch?v=vid1");
     expect(videos[0].source).toBe("Telex");
     expect(videos[0].thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    expect(fromCache).toBe(false);
   });
 
   it("puts live items in streams, not videos", async () => {
@@ -140,10 +142,12 @@ describe("fetchYouTubeData", () => {
       );
     vi.stubGlobal("fetch", mockFetch);
 
-    await fetchYouTubeData([PUBLISHER]);
-    await fetchYouTubeData([PUBLISHER]);
+    const first = await fetchYouTubeData([PUBLISHER]);
+    const second = await fetchYouTubeData([PUBLISHER]);
 
     expect(mockFetch).toHaveBeenCalledTimes(2); // playlist + videos, not 4
+    expect(first.fromCache).toBe(false);
+    expect(second.fromCache).toBe(true);
   });
 
   it("deduplicates inflight parallel requests", async () => {

@@ -23,6 +23,12 @@ export function useYouTubeData(publisherIds: string[]): {
     [publisherIds],
   );
 
+  const {
+    disabled: refreshDisabled,
+    trigger: triggerRefresh,
+    reset: resetCooldown,
+  } = useCooldown(60000);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -31,6 +37,7 @@ export function useYouTubeData(publisherIds: string[]): {
       setVideos(result.videos);
       setStreams(result.streams);
       setError(result.partialError ?? null);
+      if (result.fromCache) resetCooldown();
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
@@ -39,10 +46,7 @@ export function useYouTubeData(publisherIds: string[]): {
     } finally {
       setLoading(false);
     }
-  }, [filteredPublishers]);
-
-  const { disabled: refreshDisabled, trigger: triggerRefresh } =
-    useCooldown(60000);
+  }, [filteredPublishers, resetCooldown]);
 
   React.useEffect(() => {
     triggerRefresh();

@@ -25,7 +25,7 @@ npm test             # Vitest
 npx tsc --noEmit     # Type-check without emitting
 ```
 
-## After every change
+## After big changes
 
 1. Simplify any changed code where possible (remove duplication, dead branches,
    unnecessary abstractions, make sure to follow best practices and clean code

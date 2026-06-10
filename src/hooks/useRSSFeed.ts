@@ -25,9 +25,16 @@ export function useRSSFeed(
     [publisherIds],
   );
 
+  const {
+    disabled: refreshDisabled,
+    trigger: triggerRefresh,
+    reset: resetCooldown,
+  } = useCooldown(60000);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    let fromCache = true;
     try {
       const publisherFeeds = filteredPublishers
         .map((p) => ({ publisher: p, url: getFeedUrl(p) }))
@@ -40,8 +47,9 @@ export function useRSSFeed(
 
       const promises: Promise<FeedItem[]>[] = publisherFeeds.map(
         async ({ publisher, url }) => {
-          const feedItems = await fetchRSSFeed(url);
-          return feedItems.map((item) => ({
+          const result = await fetchRSSFeed(url);
+          if (!result.fromCache) fromCache = false;
+          return result.items.map((item) => ({
             ...item,
             source: publisher.name,
           }));
@@ -61,6 +69,8 @@ export function useRSSFeed(
         (r): r is PromiseRejectedResult => r.status === "rejected",
       );
 
+      if (failed.length > 0) fromCache = false;
+
       const sorted = successful.sort(sortByDateDesc);
 
       if (sorted.length > 0) {
@@ -74,15 +84,14 @@ export function useRSSFeed(
         setItems([]);
       }
     } catch (err) {
+      fromCache = false;
       setError(err instanceof Error ? err.message : String(err));
       setItems([]);
     } finally {
       setLoading(false);
+      if (fromCache) resetCooldown();
     }
-  }, [filteredPublishers, getFeedUrl, partialErrorMessage]);
-
-  const { disabled: refreshDisabled, trigger: triggerRefresh } =
-    useCooldown(60000);
+  }, [filteredPublishers, getFeedUrl, partialErrorMessage, resetCooldown]);
 
   React.useEffect(() => {
     triggerRefresh();

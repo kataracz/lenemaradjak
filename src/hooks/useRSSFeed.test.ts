@@ -2,7 +2,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, waitFor, cleanup } from "@testing-library/react";
 import type { FeedItem } from "@/types/dashboard";
 
-vi.mock("@/lib/fetchers/rss", () => ({ fetchRSSFeed: vi.fn() }));
+vi.mock("@/lib/fetchers/rss", () => ({
+  fetchRSSFeed: vi.fn(),
+}));
 vi.mock("@/lib/publisher-config", () => ({
   publishers: [
     {
@@ -50,7 +52,7 @@ describe("useRSSFeed", () => {
   });
 
   it("starts with empty items, not loading, no error", () => {
-    vi.mocked(fetchRSSFeed).mockResolvedValue([]);
+    vi.mocked(fetchRSSFeed).mockResolvedValue({ items: [], fromCache: false });
     const { result } = renderHook(() =>
       useRSSFeed(IDS_PUB1, getUrl, getPartialError),
     );
@@ -61,8 +63,8 @@ describe("useRSSFeed", () => {
 
   it("populates items after both feeds succeed, sorted newest first", async () => {
     vi.mocked(fetchRSSFeed)
-      .mockResolvedValueOnce([ITEM_1])
-      .mockResolvedValueOnce([ITEM_2]);
+      .mockResolvedValueOnce({ items: [ITEM_1], fromCache: false })
+      .mockResolvedValueOnce({ items: [ITEM_2], fromCache: false });
 
     const { result } = renderHook(() =>
       useRSSFeed(IDS_BOTH, getUrl, getPartialError),
@@ -95,7 +97,7 @@ describe("useRSSFeed", () => {
 
   it("shows partial error with items when some feeds fail", async () => {
     vi.mocked(fetchRSSFeed)
-      .mockResolvedValueOnce([ITEM_1])
+      .mockResolvedValueOnce({ items: [ITEM_1], fromCache: false })
       .mockRejectedValueOnce(new Error("Feed 2 down"));
 
     const { result } = renderHook(() =>
@@ -125,7 +127,10 @@ describe("useRSSFeed", () => {
   });
 
   it("only fetches publishers matching publisherIds", async () => {
-    vi.mocked(fetchRSSFeed).mockResolvedValue([ITEM_1]);
+    vi.mocked(fetchRSSFeed).mockResolvedValue({
+      items: [ITEM_1],
+      fromCache: false,
+    });
 
     const { result } = renderHook(() =>
       useRSSFeed(IDS_PUB1, getUrl, getPartialError),
@@ -142,7 +147,7 @@ describe("useRSSFeed", () => {
   });
 
   it("refreshDisabled is true from initial load and stays true until cooldown expires", async () => {
-    vi.mocked(fetchRSSFeed).mockResolvedValue([]);
+    vi.mocked(fetchRSSFeed).mockResolvedValue({ items: [], fromCache: false });
 
     const { result } = renderHook(() =>
       useRSSFeed(IDS_PUB1, getUrl, getPartialError),
@@ -155,5 +160,19 @@ describe("useRSSFeed", () => {
     });
 
     expect(result.current.refreshDisabled).toBe(true);
+  });
+
+  it("re-enables refresh once a fully cached load resolves", async () => {
+    vi.mocked(fetchRSSFeed).mockResolvedValue({ items: [], fromCache: true });
+
+    const { result } = renderHook(() =>
+      useRSSFeed(IDS_PUB1, getUrl, getPartialError),
+    );
+
+    expect(result.current.refreshDisabled).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.refreshDisabled).toBe(false);
+    });
   });
 });

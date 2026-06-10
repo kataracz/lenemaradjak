@@ -33,6 +33,7 @@ describe("useYouTubeData", () => {
     vi.mocked(fetchYouTubeData).mockResolvedValue({
       videos: [ITEM],
       streams: [],
+      fromCache: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
@@ -64,7 +65,11 @@ describe("useYouTubeData", () => {
   });
 
   it("returns empty arrays when fetch resolves with empty result", async () => {
-    vi.mocked(fetchYouTubeData).mockResolvedValue({ videos: [], streams: [] });
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: false,
+    });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
 
@@ -78,7 +83,11 @@ describe("useYouTubeData", () => {
   });
 
   it("hasConfiguredChannels is true when a matched publisher has a channel ID", async () => {
-    vi.mocked(fetchYouTubeData).mockResolvedValue({ videos: [], streams: [] });
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: false,
+    });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
 
@@ -94,6 +103,7 @@ describe("useYouTubeData", () => {
       videos: [ITEM],
       streams: [],
       partialError: "Egy YouTube csatorna nem töltődött be.",
+      fromCache: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
@@ -106,7 +116,11 @@ describe("useYouTubeData", () => {
   });
 
   it("refreshDisabled is true from initial load and stays true until cooldown expires", async () => {
-    vi.mocked(fetchYouTubeData).mockResolvedValue({ videos: [], streams: [] });
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: false,
+    });
 
     const { result } = renderHook(() => useYouTubeData(["pub1"]));
 
@@ -117,5 +131,21 @@ describe("useYouTubeData", () => {
     });
 
     expect(result.current.refreshDisabled).toBe(true);
+  });
+
+  it("re-enables refresh once a fully cached load resolves", async () => {
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: true,
+    });
+
+    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+
+    expect(result.current.refreshDisabled).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.refreshDisabled).toBe(false);
+    });
   });
 });

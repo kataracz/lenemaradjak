@@ -1,12 +1,17 @@
 import type { FeedItem } from "@/types/dashboard";
 import { PROXY_HOSTS } from "@/lib/proxy-hosts";
 
+export interface RSSFeedResult {
+  items: FeedItem[];
+  fromCache: boolean;
+}
+
 const RSS_CACHE_TTL_MS = 15 * 60 * 1000;
 const rssMemoryCache = new Map<
   string,
   { expires: number; items: FeedItem[] }
 >();
-const inflightRequests = new Map<string, Promise<FeedItem[]>>();
+const inflightRequests = new Map<string, Promise<RSSFeedResult>>();
 
 const getCacheKey = (url: string) => `lenemaradjak:rss:${url}`;
 
@@ -80,10 +85,10 @@ const parseDate = (dateValue: string | null | undefined) => {
     : parsed.toISOString();
 };
 
-export async function fetchRSSFeed(url: string): Promise<FeedItem[]> {
+export async function fetchRSSFeed(url: string): Promise<RSSFeedResult> {
   const cached = loadCachedFeed(url);
   if (cached) {
-    return cached;
+    return { items: cached, fromCache: true };
   }
 
   const inflight = inflightRequests.get(url);
@@ -146,7 +151,7 @@ export async function fetchRSSFeed(url: string): Promise<FeedItem[]> {
     });
 
     storeCachedFeed(url, parsedItems);
-    return parsedItems;
+    return { items: parsedItems, fromCache: false };
   })();
 
   inflightRequests.set(url, promise);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { FeedItem } from "@/types/dashboard";
+import type { RSSFeedResult } from "@/lib/fetchers/rss";
 
 const RSS_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -23,7 +23,7 @@ function makeFetchOk(body: string) {
 }
 
 describe("fetchRSSFeed", () => {
-  let fetchRSSFeed: (url: string) => Promise<FeedItem[]>;
+  let fetchRSSFeed: (url: string) => Promise<RSSFeedResult>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -39,7 +39,10 @@ describe("fetchRSSFeed", () => {
 
   it("parses RSS items and returns correct fields", async () => {
     vi.stubGlobal("fetch", makeFetchOk(RSS_XML));
-    const items = await fetchRSSFeed("https://example.com/feed.xml");
+    const { items, fromCache } = await fetchRSSFeed(
+      "https://example.com/feed.xml",
+    );
+    expect(fromCache).toBe(false);
     expect(items).toHaveLength(1);
     expect(items[0].title).toBe("Test Article");
     expect(items[0].url).toBe("https://example.com/article-1");
@@ -77,18 +80,22 @@ describe("fetchRSSFeed", () => {
   it("returns cached result without a second network request", async () => {
     const mockFetch = makeFetchOk(RSS_XML);
     vi.stubGlobal("fetch", mockFetch);
-    await fetchRSSFeed("https://example.com/feed.xml");
-    await fetchRSSFeed("https://example.com/feed.xml");
+    const first = await fetchRSSFeed("https://example.com/feed.xml");
+    const second = await fetchRSSFeed("https://example.com/feed.xml");
     expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(first.fromCache).toBe(false);
+    expect(second.fromCache).toBe(true);
   });
 
   it("deduplicates inflight requests for the same URL", async () => {
     const mockFetch = makeFetchOk(RSS_XML);
     vi.stubGlobal("fetch", mockFetch);
-    await Promise.all([
+    const [first, second] = await Promise.all([
       fetchRSSFeed("https://example.com/feed.xml"),
       fetchRSSFeed("https://example.com/feed.xml"),
     ]);
     expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(first.fromCache).toBe(false);
+    expect(second.fromCache).toBe(false);
   });
 });

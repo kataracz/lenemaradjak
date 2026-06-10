@@ -63,7 +63,7 @@ export function FeedItemCard({
         (item.thumbnailUrl ? (
           <button
             onClick={onPlay}
-            className="group relative w-full overflow-hidden rounded-md"
+            className="group relative w-full overflow-hidden rounded-md cursor-pointer"
             aria-label="Lejátszás"
           >
             <img
