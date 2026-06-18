@@ -18,11 +18,14 @@ Copy the example file and fill in the values:
 cp example.env .env
 ```
 
-| Variable               | Required                 | Description                                                                                                                          |
-| ---------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `VITE_YOUTUBE_API_KEY` | Yes for YouTube features | YouTube Data API v3 key. Without it the live streams and YouTube video widgets will not load. Get one from the Google Cloud Console. |
-| `ALLOWED_ORIGIN`       | Proxy only               | Origin the proxy allows CORS requests from (default: `http://localhost:5173`).                                                       |
-| `DEV_CONTACT`          | Optional                 | Contact address included in the `User-Agent` header sent to upstream RSS servers.                                                    |
+| Variable                   | Required                | Description                                                                                                                                                                                |
+| -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `VITE_YOUTUBE_API_KEY`     | YouTube Data API v3 key |
+|                            |
+| `ALLOWED_ORIGIN`           | Proxy only              | Origin the proxy allows CORS requests from (default: `http://localhost:5173`).                                                                                                             |
+| `DEV_CONTACT`              | Optional                | Contact address included in the `User-Agent` header sent to upstream RSS servers.                                                                                                          |
+| `UPSTASH_REDIS_REST_URL`   | Optional                | Upstash Redis REST URL. When set together with `UPSTASH_REDIS_REST_TOKEN`, the proxy shares its response cache and per-host rate limits via Redis instead of per-instance in-memory state. |
+| `UPSTASH_REDIS_REST_TOKEN` | Optional                | Upstash Redis REST token, used together with `UPSTASH_REDIS_REST_URL`.                                                                                                                     |
 
 # Setup
 
@@ -282,8 +285,10 @@ browser.
 
 Security & configuration
 
-- The proxy binds to `127.0.0.1` only — it is not reachable from outside the
-  machine.
+- The proxy binds to all interfaces (`0.0.0.0`) so it can run behind a reverse
+  proxy or in a container. It is not safe to expose directly to the internet —
+  access control relies on the `ALLOWED_HOSTS` allowlist, the `ALLOWED_ORIGIN`
+  CORS restriction below, and your network/firewall configuration.
 - CORS is restricted to the frontend origin via the `ALLOWED_ORIGIN` environment
   variable (default: `http://localhost:5173`). Set this in your `.env` file:
   ```
@@ -292,13 +297,17 @@ Security & configuration
 - The `ALLOWED_HOSTS` allowlist in `server/proxy-server.js` (kept in sync with
   `src/lib/proxy-hosts.ts`) restricts which upstream domains the proxy will
   fetch from. Keep this list small.
-- Rate limiting (`express-rate-limit`, per IP) and a 10-second AbortController
-  timeout are in place.
+- Rate limiting (`express-rate-limit`, per IP, plus a per-host upstream limit)
+  and a 10-second AbortController timeout are in place.
 - Responses larger than 5 MB are rejected before buffering.
-- The proxy sends conditional `If-Modified-Since` / `If-None-Match` headers on
-  repeat requests, reducing bandwidth when feeds haven't changed.
+- The proxy sends conditional `If-Modified-Since` / `If-None-Match` headers when
+  serving a stale-but-recently-cached response, reducing bandwidth when feeds
+  haven't changed.
 - The proxy identifies itself to upstream servers via a descriptive `User-Agent`
   header.
+- The response cache and per-host rate limits are shared via Upstash Redis when
+  `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are configured; otherwise
+  each proxy instance keeps its own in-memory state.
 
 Privacy, legal, and operational reminders
 
@@ -312,19 +321,22 @@ Privacy, legal, and operational reminders
 Production deployment
 
 Run the proxy server behind a reverse proxy (nginx, caddy, etc.) that handles
-TLS and external traffic. The Express server only needs to be reachable on
-loopback:
+TLS and external traffic. The Express server listens on all interfaces
+(`0.0.0.0:3001`) — use your container/network firewall to ensure it isn't
+reachable directly from outside:
 
 1. Deploy the compiled Vite frontend (static files) to your hosting provider.
 2. Run `node server/proxy-server.js` on the same host (or a trusted backend
    host).
-3. Configure the reverse proxy to forward `/api/proxy` requests to
-   `http://127.0.0.1:3001`.
+3. Configure the reverse proxy to forward `/api/proxy` requests to the proxy
+   process (e.g. `http://127.0.0.1:3001` if it runs on the same host).
 4. Set `ALLOWED_ORIGIN` in the server environment to your frontend's public URL
    (e.g. `https://lenemaradjak.example.com`).
 
-For high-traffic deployments consider replacing the in-memory cache with Redis
-or a CDN edge cache.
+For high-traffic or multi-instance deployments, set `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN` to share the response cache and per-host rate limits
+across instances via Upstash Redis; without them, each instance falls back to
+its own in-memory cache and limiter.
 
 Implementation notes (repo locations)
 

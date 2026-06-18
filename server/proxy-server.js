@@ -1,6 +1,10 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import PROXY_HOSTS_LIST from "../src/lib/proxy-hosts.json" with { type: "json" };
+import { createRedisClient } from "./redis-client.js";
+import { createCacheStore } from "./cache-store.js";
+import { createRateLimiter } from "./rate-limiter.js";
+import { resolveByHost } from "./host-config.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,43 +13,24 @@ const DEV_CONTACT = process.env.DEV_CONTACT;
 
 const ALLOWED_HOSTS = new Set(PROXY_HOSTS_LIST);
 
-const cache = new Map();
+const redis = createRedisClient();
+const cacheStore = createCacheStore(redis);
+const hostRateLimiter = createRateLimiter(redis);
+
 const inflight = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 const MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
 const RESPONSE_TOO_LARGE = "Upstream response too large";
 
-const PER_HOST_WINDOWS = new Map(); // hostname -> number[] (upstream request timestamps)
-const PER_HOST_LIMITS = {
-  "googleapis.com": { max: 20, windowMs: 60_000 },
-  default: { max: 15, windowMs: 60_000 },
+// With a shared cache every visitor benefits from one upstream fetch, so these
+// can be longer than the per-browser client-side cache TTLs.
+const CACHE_TTL_BY_HOST = {
+  "googleapis.com": 30 * 60, // quota preservation
+  default: 15 * 60, // matches client-side RSS cache TTL
 };
 
-function checkPerHostRateLimit(hostname) {
-  const entry = Object.entries(PER_HOST_LIMITS).find(
-    ([key]) => key !== "default" && hostname.endsWith(key),
-  ) ?? ["default", PER_HOST_LIMITS.default];
-  const { max, windowMs } = entry[1];
-  const now = Date.now();
-  const cutoff = now - windowMs;
-  const timestamps = PER_HOST_WINDOWS.get(hostname) ?? [];
-  const recent = timestamps.filter((t) => t > cutoff);
-  if (recent.length >= max) {
-    const retryAfter = Math.ceil((recent[0] + windowMs - now) / 1000);
-    PER_HOST_WINDOWS.set(hostname, recent);
-    return { allowed: false, retryAfter };
-  }
-  recent.push(now);
-  PER_HOST_WINDOWS.set(hostname, recent);
-  return { allowed: true };
+function getCacheTtlSeconds(hostname) {
+  return resolveByHost(hostname, CACHE_TTL_BY_HOST);
 }
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of cache) {
-    if (entry.expires < now) cache.delete(key);
-  }
-}, CACHE_TTL_MS);
 
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(limiter);
@@ -79,10 +64,10 @@ app.get("/api/proxy", async (req, res) => {
   }
 
   const cacheKey = url;
-  const now = Date.now();
-  const cached = cache.get(cacheKey);
+  const ttl = getCacheTtlSeconds(target.hostname);
 
-  if (cached && cached.expires > now) {
+  const cached = await cacheStore.get(cacheKey, ttl);
+  if (cached) {
     res.set("Content-Type", cached.contentType);
     return res.status(200).send(cached.body);
   }
@@ -91,21 +76,25 @@ app.get("/api/proxy", async (req, res) => {
   // request is already in flight, wait for it to finish and serve from cache.
   if (inflight.has(cacheKey)) {
     await inflight.get(cacheKey);
-    const fresh = cache.get(cacheKey);
-    if (fresh && fresh.expires > Date.now()) {
+    const fresh = await cacheStore.get(cacheKey, ttl);
+    if (fresh) {
       res.set("Content-Type", fresh.contentType);
       return res.status(200).send(fresh.body);
     }
     return res.status(502).json({ error: "Failed to fetch upstream" });
   }
 
-  const { allowed, retryAfter } = checkPerHostRateLimit(target.hostname);
+  const { allowed, retryAfter } = await hostRateLimiter.check(target.hostname);
   if (!allowed) {
     return res
       .status(429)
       .set("Retry-After", String(retryAfter))
       .json({ error: "Too many upstream requests for this host", retryAfter });
   }
+
+  // A stale (expired but not yet evicted) entry, used for conditional
+  // revalidation so an unchanged upstream response doesn't need re-fetching.
+  const stale = await cacheStore.getStale(cacheKey);
 
   const fetchPromise = (async () => {
     const controller = new AbortController();
@@ -116,23 +105,19 @@ app.get("/api/proxy", async (req, res) => {
         signal: controller.signal,
         headers: {
           "User-Agent": `Lenemaradjak/1.0 WIP RSS Reader  (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
-          ...(cached?.lastModified
-            ? { "If-Modified-Since": cached.lastModified }
+          ...(stale?.lastModified
+            ? { "If-Modified-Since": stale.lastModified }
             : {}),
-          ...(cached?.etag ? { "If-None-Match": cached.etag } : {}),
+          ...(stale?.etag ? { "If-None-Match": stale.etag } : {}),
         },
       });
     } finally {
       clearTimeout(timeout);
     }
 
-    if (response.status === 304 && cached) {
-      cached.expires = Date.now() + CACHE_TTL_MS;
-      return {
-        status: 200,
-        contentType: cached.contentType,
-        body: cached.body,
-      };
+    if (response.status === 304 && stale) {
+      await cacheStore.touch(cacheKey, ttl);
+      return { status: 200, contentType: stale.contentType, body: stale.body };
     }
 
     const contentLength = Number(response.headers.get("content-length") ?? 0);
@@ -153,17 +138,13 @@ app.get("/api/proxy", async (req, res) => {
     }
 
     const buffer = Buffer.from(body);
-    cache.set(cacheKey, {
-      expires: Date.now() + CACHE_TTL_MS,
-      contentType,
-      body: buffer,
-      lastModified: response.headers.get("last-modified") ?? null,
-      etag: response.headers.get("etag") ?? null,
-    });
-    if (cache.size > 200) {
-      const [first] = cache.keys();
-      cache.delete(first);
-    }
+    const etag = response.headers.get("etag") ?? null;
+    const lastModified = response.headers.get("last-modified") ?? null;
+    await cacheStore.set(
+      cacheKey,
+      { contentType, body: buffer, etag, lastModified },
+      ttl,
+    );
 
     return { status: response.status, contentType, body: buffer };
   })();
@@ -192,8 +173,8 @@ app.get("/api/proxy", async (req, res) => {
   }
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Proxy server listening on http://127.0.0.1:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Proxy server listening on http://0.0.0.0:${PORT}`);
 });
 
 export default app;
