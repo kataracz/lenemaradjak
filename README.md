@@ -262,22 +262,33 @@ When to use the proxy
 
 Run locally
 
-Start the proxy server in one terminal:
+Build the proxy image once (re-run after changes to `server/`):
 
 ```bash
-npm run start:server
+npm run docker:build
 ```
 
-Then run the Vite dev server in another terminal:
-
-```bash
-npm run dev
-```
-
-Or run both together:
+Then start both the proxy container and the Vite dev server together:
 
 ```bash
 npm run dev:all
+```
+
+Environment variables from `.env` are forwarded into the container
+automatically. The proxy listens on port 3001, which matches the Vite dev
+server's proxy target — no config change needed.
+
+To run the proxy container on its own:
+
+```bash
+npm run docker:proxy
+```
+
+To run the proxy with bare Node instead of Docker (e.g. if Docker is not
+available):
+
+```bash
+npm run start:server
 ```
 
 If the proxy server is not running, some RSS feed requests may fail in the
@@ -341,6 +352,7 @@ its own in-memory cache and limiter.
 Implementation notes (repo locations)
 
 - Proxy server: `server/proxy-server.js`
+- Docker image: `Dockerfile` (root), `.dockerignore`
 - Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts
   to `/api/proxy`).
 - Shared host allowlist: `src/lib/proxy-hosts.ts` (imported by `rss.ts`;

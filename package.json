@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "start:server": "node server/proxy-server.js",
-    "dev:all": "npm run start:server & npm run dev",
+    "docker:build": "docker build -t lenemaradjak-proxy .",
+    "docker:proxy": "docker run --rm -p 3001:3001 -e PORT=3001 --env-file .env lenemaradjak-proxy",
+    "dev:all": "npm run docker:proxy & npm run dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write .",
