@@ -63,6 +63,7 @@ const getChannelDataCacheKey = (channelId: string) =>
 function loadFromCache<T>(
   memoryCache: Map<string, { expires: number } & T>,
   storageKey: string,
+  storage: "local" | "session" = "local",
 ): ({ expires: number } & T) | undefined {
   const now = Date.now();
   const memEntry = memoryCache.get(storageKey);
@@ -71,16 +72,16 @@ function loadFromCache<T>(
   if (typeof window === "undefined") return undefined;
 
   try {
-    const stored = window.localStorage.getItem(storageKey);
+    const store =
+      storage === "session" ? window.sessionStorage : window.localStorage;
+    const stored = store.getItem(storageKey);
     if (!stored) return undefined;
     const parsed = JSON.parse(stored) as { expires: number } & T;
     if (parsed.expires > now) {
       memoryCache.set(storageKey, parsed);
       return parsed;
     }
-  } catch {
-    // Ignore cache errors.
-  }
+  } catch {}
 
   return undefined;
 }
@@ -90,6 +91,7 @@ function saveToCache<T>(
   storageKey: string,
   ttl: number,
   data: T,
+  storage: "local" | "session" = "local",
 ) {
   const entry = Object.assign({ expires: Date.now() + ttl }, data);
   memoryCache.set(storageKey, entry);
@@ -97,10 +99,10 @@ function saveToCache<T>(
   if (typeof window === "undefined") return;
 
   try {
-    window.localStorage.setItem(storageKey, JSON.stringify(entry));
-  } catch {
-    // Ignore cache errors.
-  }
+    const store =
+      storage === "session" ? window.sessionStorage : window.localStorage;
+    store.setItem(storageKey, JSON.stringify(entry));
+  } catch {}
 }
 
 const loadCachedChannelId = (publisherId: string): string | undefined => {
@@ -126,6 +128,7 @@ const loadCachedChannelData = (
   const entry = loadFromCache<{ videos: FeedItem[]; streams: FeedItem[] }>(
     channelDataCache,
     key,
+    "session",
   );
   return entry ? { videos: entry.videos, streams: entry.streams } : undefined;
 };
@@ -140,6 +143,7 @@ const storeCachedChannelData = (
     getChannelDataCacheKey(channelId),
     YOUTUBE_RESULT_TTL_MS,
     { videos, streams },
+    "session",
   );
 };
 
@@ -265,9 +269,12 @@ async function resolveChannelPublishers(
 function fetchChannelData(
   publisher: PublisherConfig,
   channelId: string,
+  force = false,
 ): Promise<{ videos: FeedItem[]; streams: FeedItem[] }> {
-  const cached = loadCachedChannelData(channelId);
-  if (cached) return Promise.resolve(cached);
+  if (!force) {
+    const cached = loadCachedChannelData(channelId);
+    if (cached) return Promise.resolve(cached);
+  }
 
   const apiKey = getApiKey();
   if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
@@ -364,13 +371,16 @@ function isYouTubeDataCached(publishers: PublisherConfig[]): boolean {
   });
 }
 
-export async function fetchYouTubeData(publishers: PublisherConfig[]): Promise<{
+export async function fetchYouTubeData(
+  publishers: PublisherConfig[],
+  { force = false }: { force?: boolean } = {},
+): Promise<{
   videos: FeedItem[];
   streams: FeedItem[];
   partialError?: string;
   fromCache: boolean;
 }> {
-  const fromCache = isYouTubeDataCached(publishers);
+  const fromCache = !force && isYouTubeDataCached(publishers);
 
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -384,7 +394,7 @@ export async function fetchYouTubeData(publishers: PublisherConfig[]): Promise<{
 
   const results = await Promise.allSettled(
     resolvedPublishers.map(({ publisher, channelId }) =>
-      fetchChannelData(publisher, channelId),
+      fetchChannelData(publisher, channelId, force),
     ),
   );
 

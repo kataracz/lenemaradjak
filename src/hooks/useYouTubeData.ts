@@ -29,24 +29,27 @@ export function useYouTubeData(publisherIds: string[]): {
     reset: resetCooldown,
   } = useCooldown(60000);
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchYouTubeData(filteredPublishers);
-      setVideos(result.videos);
-      setStreams(result.streams);
-      setError(result.partialError ?? null);
-      if (result.fromCache) resetCooldown();
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : String(err));
-      setVideos([]);
-      setStreams([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filteredPublishers, resetCooldown]);
+  const load = React.useCallback(
+    async (force = false) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchYouTubeData(filteredPublishers, { force });
+        setVideos(result.videos);
+        setStreams(result.streams);
+        setError(result.partialError ?? null);
+        if (result.fromCache) resetCooldown();
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : String(err));
+        setVideos([]);
+        setStreams([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filteredPublishers, resetCooldown],
+  );
 
   React.useEffect(() => {
     triggerRefresh();
@@ -59,7 +62,7 @@ export function useYouTubeData(publisherIds: string[]): {
   }, [load, triggerRefresh]);
 
   const refresh = React.useCallback(() => {
-    if (triggerRefresh()) void load();
+    if (triggerRefresh()) void load(true);
   }, [triggerRefresh, load]);
 
   const hasConfiguredChannels = React.useMemo(

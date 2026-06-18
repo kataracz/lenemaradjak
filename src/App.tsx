@@ -5,9 +5,7 @@ import { fetchRSSFeed } from "@/lib/fetchers/rss";
 
 function App() {
   React.useEffect(() => {
-    // Warm RSS cache on initial load by fetching configured feeds.
-    // `fetchRSSFeed` returns cached results when available, so this
-    // safely avoids redundant network requests while populating cache.
+    // Warm the RSS cache before individual widgets request their feeds.
     if (document.hidden) return;
 
     const urls = new Set<string>();
@@ -20,9 +18,7 @@ function App() {
     void (async () => {
       try {
         await Promise.allSettled(Array.from(urls).map((u) => fetchRSSFeed(u)));
-      } catch {
-        // ignore prefetch failures
-      }
+      } catch {}
     })();
   }, []);
 

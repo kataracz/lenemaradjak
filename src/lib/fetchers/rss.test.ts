@@ -27,7 +27,7 @@ describe("fetchRSSFeed", () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    localStorage.clear();
+    sessionStorage.clear();
     const mod = await import("@/lib/fetchers/rss");
     fetchRSSFeed = mod.fetchRSSFeed;
   });

@@ -57,6 +57,7 @@ describe("fetchYouTubeData", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     localStorage.clear();
+    sessionStorage.clear();
     clearYouTubeCaches();
   });
 
@@ -145,7 +146,7 @@ describe("fetchYouTubeData", () => {
     const first = await fetchYouTubeData([PUBLISHER]);
     const second = await fetchYouTubeData([PUBLISHER]);
 
-    expect(mockFetch).toHaveBeenCalledTimes(2); // playlist + videos, not 4
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(first.fromCache).toBe(false);
     expect(second.fromCache).toBe(true);
   });
@@ -164,7 +165,7 @@ describe("fetchYouTubeData", () => {
       fetchYouTubeData([PUBLISHER]),
     ]);
 
-    expect(mockFetch).toHaveBeenCalledTimes(2); // not 4
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it("throws when the playlist API returns a non-ok response", async () => {

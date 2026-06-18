@@ -27,7 +27,7 @@ const loadCachedFeed = (url: string): FeedItem[] | undefined => {
   }
 
   try {
-    const stored = window.localStorage.getItem(getCacheKey(url));
+    const stored = window.sessionStorage.getItem(getCacheKey(url));
     if (!stored) {
       return undefined;
     }
@@ -37,9 +37,7 @@ const loadCachedFeed = (url: string): FeedItem[] | undefined => {
       rssMemoryCache.set(url, parsed);
       return parsed.items;
     }
-  } catch {
-    // Ignore cache errors.
-  }
+  } catch {}
 
   return undefined;
 };
@@ -53,11 +51,17 @@ const storeCachedFeed = (url: string, items: FeedItem[]) => {
   }
 
   try {
-    window.localStorage.setItem(getCacheKey(url), JSON.stringify(entry));
-  } catch {
-    // Ignore cache errors.
-  }
+    window.sessionStorage.setItem(getCacheKey(url), JSON.stringify(entry));
+  } catch {}
 };
+
+export function clearRSSCache(url: string) {
+  rssMemoryCache.delete(url);
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(getCacheKey(url));
+  } catch {}
+}
 
 const parseText = (parent: Element | null, selectors: string[]) => {
   if (!parent) {
@@ -85,10 +89,13 @@ const parseDate = (dateValue: string | null | undefined) => {
     : parsed.toISOString();
 };
 
-export async function fetchRSSFeed(url: string): Promise<RSSFeedResult> {
-  const cached = loadCachedFeed(url);
-  if (cached) {
-    return { items: cached, fromCache: true };
+export async function fetchRSSFeed(
+  url: string,
+  { force = false }: { force?: boolean } = {},
+): Promise<RSSFeedResult> {
+  if (!force) {
+    const cached = loadCachedFeed(url);
+    if (cached) return { items: cached, fromCache: true };
   }
 
   const inflight = inflightRequests.get(url);

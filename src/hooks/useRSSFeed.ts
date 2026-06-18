@@ -31,67 +31,70 @@ export function useRSSFeed(
     reset: resetCooldown,
   } = useCooldown(60000);
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    let fromCache = true;
-    try {
-      const publisherFeeds = filteredPublishers
-        .map((p) => ({ publisher: p, url: getFeedUrl(p) }))
-        .filter(
-          (
-            entry,
-          ): entry is { publisher: typeof entry.publisher; url: string } =>
-            Boolean(entry.url),
+  const load = React.useCallback(
+    async (force = false) => {
+      setLoading(true);
+      setError(null);
+      let fromCache = true;
+      try {
+        const publisherFeeds = filteredPublishers
+          .map((p) => ({ publisher: p, url: getFeedUrl(p) }))
+          .filter(
+            (
+              entry,
+            ): entry is { publisher: typeof entry.publisher; url: string } =>
+              Boolean(entry.url),
+          );
+
+        const promises: Promise<FeedItem[]>[] = publisherFeeds.map(
+          async ({ publisher, url }) => {
+            const result = await fetchRSSFeed(url, { force });
+            if (!result.fromCache) fromCache = false;
+            return result.items.map((item) => ({
+              ...item,
+              source: publisher.name,
+            }));
+          },
         );
 
-      const promises: Promise<FeedItem[]>[] = publisherFeeds.map(
-        async ({ publisher, url }) => {
-          const result = await fetchRSSFeed(url);
-          if (!result.fromCache) fromCache = false;
-          return result.items.map((item) => ({
-            ...item,
-            source: publisher.name,
-          }));
-        },
-      );
+        const results = await Promise.allSettled(promises);
 
-      const results = await Promise.allSettled(promises);
+        const successful = results
+          .filter(
+            (r): r is PromiseFulfilledResult<FeedItem[]> =>
+              r.status === "fulfilled",
+          )
+          .flatMap((r) => r.value);
 
-      const successful = results
-        .filter(
-          (r): r is PromiseFulfilledResult<FeedItem[]> =>
-            r.status === "fulfilled",
-        )
-        .flatMap((r) => r.value);
+        const failed = results.filter(
+          (r): r is PromiseRejectedResult => r.status === "rejected",
+        );
 
-      const failed = results.filter(
-        (r): r is PromiseRejectedResult => r.status === "rejected",
-      );
+        if (failed.length > 0) fromCache = false;
 
-      if (failed.length > 0) fromCache = false;
+        const sorted = successful.sort(sortByDateDesc);
 
-      const sorted = successful.sort(sortByDateDesc);
-
-      if (sorted.length > 0) {
-        setItems(sorted);
-        if (failed.length > 0) {
-          setError(partialErrorMessage(failed.length));
+        if (sorted.length > 0) {
+          setItems(sorted);
+          if (failed.length > 0) {
+            setError(partialErrorMessage(failed.length));
+          }
+        } else if (failed.length > 0) {
+          throw failed[0].reason;
+        } else {
+          setItems([]);
         }
-      } else if (failed.length > 0) {
-        throw failed[0].reason;
-      } else {
+      } catch (err) {
+        fromCache = false;
+        setError(err instanceof Error ? err.message : String(err));
         setItems([]);
+      } finally {
+        setLoading(false);
+        if (fromCache) resetCooldown();
       }
-    } catch (err) {
-      fromCache = false;
-      setError(err instanceof Error ? err.message : String(err));
-      setItems([]);
-    } finally {
-      setLoading(false);
-      if (fromCache) resetCooldown();
-    }
-  }, [filteredPublishers, getFeedUrl, partialErrorMessage, resetCooldown]);
+    },
+    [filteredPublishers, getFeedUrl, partialErrorMessage, resetCooldown],
+  );
 
   React.useEffect(() => {
     triggerRefresh();
@@ -104,7 +107,7 @@ export function useRSSFeed(
   }, [load, triggerRefresh]);
 
   const refresh = React.useCallback(() => {
-    if (triggerRefresh()) void load();
+    if (triggerRefresh()) void load(true);
   }, [triggerRefresh, load]);
 
   return { items, loading, error, refresh, refreshDisabled };

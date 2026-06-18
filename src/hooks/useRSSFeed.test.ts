@@ -74,7 +74,7 @@ describe("useRSSFeed", () => {
       expect(result.current.items).toHaveLength(2);
     });
 
-    expect(result.current.items[0].id).toBe("i1"); // newer first
+    expect(result.current.items[0].id).toBe("i1");
     expect(result.current.items[1].id).toBe("i2");
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
@@ -143,6 +143,7 @@ describe("useRSSFeed", () => {
     expect(vi.mocked(fetchRSSFeed)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(fetchRSSFeed)).toHaveBeenCalledWith(
       "https://pub1.com/feed",
+      { force: false },
     );
   });
 

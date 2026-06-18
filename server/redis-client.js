@@ -1,6 +1,5 @@
 import { Redis } from "@upstash/redis";
 
-// Returns null when unconfigured so callers fall back to in-memory.
 export function createRedisClient(env = process.env) {
   const { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = env;
   if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null;
