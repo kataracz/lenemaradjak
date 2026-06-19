@@ -32,6 +32,7 @@ function getCacheTtlSeconds(hostname) {
   return resolveByHost(hostname, CACHE_TTL_BY_HOST);
 }
 
+app.set("trust proxy", 1);
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(limiter);
 
