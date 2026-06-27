@@ -48,8 +48,21 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
       - uses: google-github-actions/setup-gcloud@v2
       - run: |
-          gcloud builds submit \
-            --tag europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:${{ github.sha }}
+          BUILD_ID=$(gcloud builds submit \
+            --tag europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:${{ github.sha }} \
+            --async \
+            --format='value(id)')
+          echo "Build submitted: $BUILD_ID"
+          while true; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format='value(status)')
+            echo "Build status: $STATUS"
+            case "$STATUS" in
+              SUCCESS) break ;;
+              FAILURE|CANCELLED|TIMEOUT|INTERNAL_ERROR|EXPIRED)
+                echo "Build failed: $STATUS"; exit 1 ;;
+            esac
+            sleep 10
+          done
       - run: |
           gcloud run deploy lenemaradjak-proxy \
             --image europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:${{ github.sha }} \
