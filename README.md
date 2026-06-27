@@ -331,28 +331,87 @@ Privacy, legal, and operational reminders
 
 Production deployment
 
-Run the proxy server behind a reverse proxy (nginx, caddy, etc.) that handles
-TLS and external traffic. The Express server listens on all interfaces
-(`0.0.0.0:3001`) — use your container/network firewall to ensure it isn't
-reachable directly from outside:
+Architecture: Firebase Hosting serves the Vite SPA (`dist/`). Requests to
+`/api/**` are rewritten to a Cloud Run service (`lenemaradjak-proxy`,
+`europe-west1`) via `firebase.json`. Cloud Run runs the Express proxy
+(`server/proxy-server.js`) in Docker. Upstash Redis provides a shared cache and
+rate-limit state across instances; without it each instance falls back to its own
+in-memory state.
 
-1. Deploy the compiled Vite frontend (static files) to your hosting provider.
-2. Run `node server/proxy-server.js` on the same host (or a trusted backend
-   host).
-3. Configure the reverse proxy to forward `/api/proxy` requests to the proxy
-   process (e.g. `http://127.0.0.1:3001` if it runs on the same host).
-4. Set `ALLOWED_ORIGIN` in the server environment to your frontend's public URL
-   (e.g. `https://lenemaradjak.example.com`).
+Prerequisites
 
-For high-traffic or multi-instance deployments, set `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN` to share the response cache and per-host rate limits
-across instances via Upstash Redis; without them, each instance falls back to
-its own in-memory cache and limiter.
+- Firebase CLI: `npm i -g firebase-tools`
+- GCP project `lenemaradjak` with Cloud Run, Artifact Registry, Cloud Build, and
+  Secret Manager APIs enabled
+- Upstash Redis database (upstash.com) — optional but recommended for production
+
+Environment variables
+
+| Variable                   | Where set                      | Purpose                          |
+| -------------------------- | ------------------------------ | -------------------------------- |
+| `VITE_YOUTUBE_API_KEY`     | GitHub secret / local `.env`   | YouTube Data API v3 key          |
+| `ALLOWED_ORIGIN`           | Cloud Run env var              | CORS origin for the proxy        |
+| `DEV_CONTACT`              | Cloud Run env var / GitHub secret | User-Agent contact header     |
+| `UPSTASH_REDIS_REST_URL`   | Secret Manager → Cloud Run     | Redis endpoint                   |
+| `UPSTASH_REDIS_REST_TOKEN` | Secret Manager → Cloud Run     | Redis auth token                 |
+
+Deploying the proxy (manual)
+
+```bash
+gcloud builds submit \
+  --tag europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:latest
+gcloud run deploy lenemaradjak-proxy \
+  --image europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:latest \
+  --region europe-west1 --min-instances 0 --max-instances 2 \
+  --allow-unauthenticated \
+  --set-env-vars ALLOWED_ORIGIN=https://lenemaradjak.web.app,DEV_CONTACT=your@email.com \
+  --set-secrets UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest
+```
+
+Deploying the frontend (manual)
+
+```bash
+VITE_YOUTUBE_API_KEY=your_key npm run build
+firebase deploy --only hosting
+```
+
+CI/CD
+
+On every push to `master`, two jobs run in parallel:
+
+- `deploy-hosting` (`.github/workflows/deploy.yml`): builds the Vite app with
+  `VITE_YOUTUBE_API_KEY` and deploys to Firebase Hosting via
+  `FirebaseExtended/action-hosting-deploy`.
+- `deploy-proxy` (`.github/workflows/deploy.yml`): authenticates with GCP,
+  builds a new Docker image via Cloud Build (tagged with the git SHA), and
+  deploys it to Cloud Run.
+
+On PRs and non-master pushes, `.github/workflows/ci.yml` runs lint, format
+check, tests, and a build.
+
+Required GitHub repo secrets: `GCP_SA_KEY`, `FIREBASE_SERVICE_ACCOUNT`,
+`VITE_YOUTUBE_API_KEY`, `DEV_CONTACT`.
+
+Caching strategy
+
+- Shared Redis cache (TTL: 30 min for googleapis.com, 15 min for others) means
+  cold-start Cloud Run instances don't hammer publishers.
+- Per-IP rate limiting (200 req/15 min) and per-host upstream limiting
+  (15 req/60 s) prevent overload.
+- At `min-instances=0`, the shared Redis cache keeps responses warm even after
+  container scale-down.
+- Local dev: omit Redis env vars → in-memory fallback is active automatically.
 
 Implementation notes (repo locations)
 
-- Proxy server: `server/proxy-server.js`
+- Proxy entrypoint: `server/proxy-server.js`
+- Dual memory/Redis cache: `server/cache-store.js`
+- Dual memory/Redis rate limiter: `server/rate-limiter.js`
+- Upstash REST client: `server/redis-client.js`
 - Docker image: `Dockerfile` (root), `.dockerignore`
+- Firebase config: `firebase.json`
+- CI workflow: `.github/workflows/ci.yml`
+- Deploy workflow: `.github/workflows/deploy.yml`
 - Client-side routing for feeds: `src/lib/fetchers/rss.ts` (routes known hosts
   to `/api/proxy`).
 - Shared host allowlist: `src/lib/proxy-hosts.ts` (imported by `rss.ts`;

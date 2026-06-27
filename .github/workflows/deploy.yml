@@ -1,0 +1,46 @@
+name: Deploy
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy-hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: lenemaradjak
+
+  deploy-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: |
+          gcloud builds submit \
+            --tag europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:${{ github.sha }}
+      - run: |
+          gcloud run deploy lenemaradjak-proxy \
+            --image europe-west1-docker.pkg.dev/lenemaradjak/lenemaradjak/proxy:${{ github.sha }} \
+            --region europe-west1 \
+            --service-account cloudrun-proxy-sa@lenemaradjak.iam.gserviceaccount.com \
+            --min-instances 0 \
+            --max-instances 2 \
+            --allow-unauthenticated \
+            --set-env-vars "ALLOWED_ORIGIN=https://lenemaradjak.web.app,DEV_CONTACT=${{ secrets.DEV_CONTACT }}" \
+            --set-secrets "UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest"
