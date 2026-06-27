@@ -10,7 +10,7 @@
       {
         "source": "/api/**",
         "run": {
-          "serviceId": "lenemaradjak-proxy",
+          "serviceId": "lenemaradjak",
           "region": "europe-west1"
         }
       },
