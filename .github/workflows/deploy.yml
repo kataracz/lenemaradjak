@@ -4,7 +4,25 @@ on:
     branches: [master]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.check.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: check
+        run: |
+          COUNT=$(git diff --name-only HEAD^1 HEAD \
+            -- src/ public/ index.html 'vite.config.*' \
+               package.json package-lock.json | wc -l)
+          echo "frontend=$([[ $COUNT -gt 0 ]] && echo true || echo false)" \
+            >> $GITHUB_OUTPUT
+
   deploy-hosting:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
