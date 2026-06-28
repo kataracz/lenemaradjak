@@ -56,7 +56,6 @@ function makeVideosResponse(
 describe("fetchYouTubeData", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
-    localStorage.clear();
     sessionStorage.clear();
     clearYouTubeCaches();
   });

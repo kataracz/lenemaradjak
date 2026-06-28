@@ -81,7 +81,9 @@ function loadFromCache<T>(
       memoryCache.set(storageKey, parsed);
       return parsed;
     }
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 
   return undefined;
 }
@@ -102,7 +104,9 @@ function saveToCache<T>(
     const store =
       storage === "session" ? window.sessionStorage : window.localStorage;
     store.setItem(storageKey, JSON.stringify(entry));
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 }
 
 const loadCachedChannelId = (publisherId: string): string | undefined => {
