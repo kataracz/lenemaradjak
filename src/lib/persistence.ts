@@ -27,5 +27,7 @@ export function saveDashboardLayouts(layouts: DashboardLayouts) {
 
   try {
     window.localStorage.setItem(DASHBOARD_LAYOUT_KEY, JSON.stringify(layouts));
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 }

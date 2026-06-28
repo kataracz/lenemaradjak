@@ -37,7 +37,9 @@ const loadCachedFeed = (url: string): FeedItem[] | undefined => {
       rssMemoryCache.set(url, parsed);
       return parsed.items;
     }
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 
   return undefined;
 };
@@ -52,7 +54,9 @@ const storeCachedFeed = (url: string, items: FeedItem[]) => {
 
   try {
     window.sessionStorage.setItem(getCacheKey(url), JSON.stringify(entry));
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 };
 
 export function clearRSSCache(url: string) {
@@ -60,7 +64,9 @@ export function clearRSSCache(url: string) {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.removeItem(getCacheKey(url));
-  } catch {}
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn(error);
+  }
 }
 
 const parseText = (parent: Element | null, selectors: string[]) => {

@@ -18,7 +18,9 @@ function App() {
     void (async () => {
       try {
         await Promise.allSettled(Array.from(urls).map((u) => fetchRSSFeed(u)));
-      } catch {}
+      } catch (error) {
+        if (import.meta.env.DEV) console.warn(error);
+      }
     })();
   }, []);
 
