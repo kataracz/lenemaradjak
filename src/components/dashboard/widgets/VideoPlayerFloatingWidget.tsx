@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { DragDropVerticalIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useVideoPlayer } from "@/contexts/useVideoPlayer";
+import type { ResizeCallbackData } from "react-resizable";
 import { extractYouTubeVideoId, buildYouTubeEmbedUrl } from "@/lib/youtube";
 
 const DEFAULT_WIDTH = 320;
@@ -35,7 +36,10 @@ export function VideoPlayerFloatingWidget() {
         <Resizable
           width={width}
           height={0}
-          onResize={(_, { size }) => {
+          onResize={(
+            _e: React.SyntheticEvent,
+            { size }: ResizeCallbackData,
+          ) => {
             setWidth(size.width);
           }}
           minConstraints={[MIN_WIDTH, 0]}
