@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { findWidgetDefinition } from "@/components/dashboard/widget-registry";
 import { MobileDashboardTabs } from "@/components/dashboard/mobile-dashboard-tabs";
+import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { useDashboardPersistence } from "@/hooks/useDashboardPersistence";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { defaultPublisherIds, publishers } from "@/lib/publisher-config";
@@ -108,26 +109,29 @@ export default function Page() {
               <div>
                 <h1 className="text-2xl font-semibold">Le ne maradjak</h1>
                 <p className="text-sm text-muted-foreground">
-                  Mi történik? Mit csinál Magyar Péter?
+                  Cikkek, podcastok, videók és élő adások egy helyen.
                 </p>
               </div>
-              <Select
-                value={publisherFilter}
-                onValueChange={setPublisherFilter}
-              >
-                <SelectTrigger className="w-56" size="sm">
-                  <SelectValue placeholder="Válassz kiadót" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {publisherOptions.map((publisher) => (
-                      <SelectItem key={publisher.id} value={publisher.id}>
-                        {publisher.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Select
+                  value={publisherFilter}
+                  onValueChange={setPublisherFilter}
+                >
+                  <SelectTrigger className="w-56" size="sm">
+                    <SelectValue placeholder="Válassz kiadót" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {publisherOptions.map((publisher) => (
+                        <SelectItem key={publisher.id} value={publisher.id}>
+                          {publisher.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {isMobile ? (
               <MobileDashboardTabs publisherIds={filteredPublisherIds} />

@@ -69,6 +69,12 @@ export function clearRSSCache(url: string) {
   }
 }
 
+const stripHtml = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const parsed = new DOMParser().parseFromString(value, "text/html");
+  return parsed.body.textContent?.trim() || undefined;
+};
+
 const parseText = (parent: Element | null, selectors: string[]) => {
   if (!parent) {
     return undefined;
@@ -158,7 +164,7 @@ export async function fetchRSSFeed(
       return {
         id: link ?? `${title ?? "item"}-${publishedAt}`,
         title: title ?? "Untitled",
-        description: description ?? undefined,
+        description: stripHtml(description),
         url: link ?? "#",
         publishedAt,
         thumbnailUrl,

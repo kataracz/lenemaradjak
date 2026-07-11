@@ -51,6 +51,16 @@ describe("fetchRSSFeed", () => {
     );
   });
 
+  it("strips HTML markup from descriptions", async () => {
+    const xml = RSS_XML.replace(
+      "<description>Test description</description>",
+      "<description><![CDATA[<p>Hello <b>world</b></p>]]></description>",
+    );
+    vi.stubGlobal("fetch", makeFetchOk(xml));
+    const { items } = await fetchRSSFeed("https://example.com/feed.xml");
+    expect(items[0].description).toBe("Hello world");
+  });
+
   it("falls back to now and warns on an unparseable pubDate", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const xml = RSS_XML.replace(
