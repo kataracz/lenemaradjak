@@ -16,6 +16,8 @@ vi.mock("@/lib/fetchers/youtube", () => ({
 import { useYouTubeData } from "@/hooks/useYouTubeData";
 import { fetchYouTubeData } from "@/lib/fetchers/youtube";
 
+const IDS_PUB1 = ["pub1"];
+
 const ITEM: FeedItem = {
   id: "vid1",
   title: "Test Video",
@@ -147,5 +149,50 @@ describe("useYouTubeData", () => {
     await waitFor(() => {
       expect(result.current.refreshDisabled).toBe(false);
     });
+  });
+
+  it("passes an AbortSignal to fetchYouTubeData and aborts it on unmount", async () => {
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: false,
+    });
+
+    const { unmount } = renderHook(() => useYouTubeData(IDS_PUB1));
+
+    await waitFor(() => {
+      expect(fetchYouTubeData).toHaveBeenCalled();
+    });
+
+    const passedSignal = vi.mocked(fetchYouTubeData).mock.calls[0][1]?.signal;
+    expect(passedSignal).toBeInstanceOf(AbortSignal);
+    expect(passedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(passedSignal?.aborted).toBe(true);
+  });
+
+  it("does not throw when the initial load resolves after unmount", async () => {
+    let resolveFetch!: (value: {
+      videos: FeedItem[];
+      streams: FeedItem[];
+      fromCache: boolean;
+    }) => void;
+    vi.mocked(fetchYouTubeData).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { unmount } = renderHook(() => useYouTubeData(IDS_PUB1));
+
+    await waitFor(() => {
+      expect(fetchYouTubeData).toHaveBeenCalled();
+    });
+    unmount();
+
+    resolveFetch({ videos: [ITEM], streams: [], fromCache: false });
+    await new Promise((r) => setTimeout(r, 0));
   });
 });

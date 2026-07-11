@@ -151,7 +151,7 @@ const storeCachedChannelData = (
   );
 };
 
-async function proxyFetch(url: URL): Promise<Response> {
+async function proxyFetch(url: URL, signal?: AbortSignal): Promise<Response> {
   const doFetch = () =>
     typeof window !== "undefined" && PROXY_HOSTS.has(url.hostname)
       ? fetch(`/api/proxy?url=${encodeURIComponent(url.toString())}`)
@@ -160,10 +160,31 @@ async function proxyFetch(url: URL): Promise<Response> {
   const res = await doFetch();
   if (res.status === 429) {
     const waitSec = Number(res.headers.get("Retry-After") ?? 5);
-    await new Promise((r) => setTimeout(r, waitSec * 1000));
+    await new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(abortError(signal));
+        return;
+      }
+      const timerId = setTimeout(resolve, waitSec * 1000);
+      signal?.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timerId);
+          reject(abortError(signal));
+        },
+        { once: true },
+      );
+    });
     return doFetch();
   }
   return res;
+}
+
+function abortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) return signal.reason;
+  const err = new Error("Aborted");
+  err.name = "AbortError";
+  return err;
 }
 
 const normalizeHandle = (handle: string) => handle.trim().replace(/^@/, "");
@@ -172,6 +193,7 @@ const getUploadsPlaylistId = (channelId: string) => "UU" + channelId.slice(2);
 
 async function resolveYouTubeChannelId(
   publisher: PublisherConfig,
+  signal?: AbortSignal,
 ): Promise<string | undefined> {
   if (publisher.youtubeChannelId) {
     return publisher.youtubeChannelId;
@@ -193,7 +215,7 @@ async function resolveYouTubeChannelId(
     handleUrl.searchParams.set("forHandle", handle);
     handleUrl.searchParams.set("key", apiKey);
 
-    const handleResponse = await proxyFetch(handleUrl);
+    const handleResponse = await proxyFetch(handleUrl, signal);
     if (!handleResponse.ok) {
       // Genuine API error (quota, auth, etc.) — search.list would also fail, so skip it.
       console.warn(
@@ -220,7 +242,7 @@ async function resolveYouTubeChannelId(
     searchUrl.searchParams.set("maxResults", "1");
     searchUrl.searchParams.set("key", apiKey);
 
-    const searchResponse = await proxyFetch(searchUrl);
+    const searchResponse = await proxyFetch(searchUrl, signal);
     if (!searchResponse.ok) {
       console.warn(
         `YouTube channel resolution failed for ${publisher.id}: ${String(searchResponse.status)}`,
@@ -247,11 +269,12 @@ async function resolveYouTubeChannelId(
 
 async function resolveChannelPublishers(
   publishers: PublisherConfig[],
+  signal?: AbortSignal,
 ): Promise<{ publisher: PublisherConfig; channelId: string }[]> {
   const results = await Promise.allSettled(
     publishers.map(async (publisher) => ({
       publisher,
-      channelId: await resolveYouTubeChannelId(publisher),
+      channelId: await resolveYouTubeChannelId(publisher, signal),
     })),
   );
 
@@ -274,6 +297,7 @@ function fetchChannelData(
   publisher: PublisherConfig,
   channelId: string,
   force = false,
+  signal?: AbortSignal,
 ): Promise<{ videos: FeedItem[]; streams: FeedItem[] }> {
   if (!force) {
     const cached = loadCachedChannelData(channelId);
@@ -295,7 +319,7 @@ function fetchChannelData(
     playlistUrl.searchParams.set("maxResults", "10");
     playlistUrl.searchParams.set("key", apiKey);
 
-    const playlistResponse = await proxyFetch(playlistUrl);
+    const playlistResponse = await proxyFetch(playlistUrl, signal);
     if (!playlistResponse.ok) {
       throw new Error(
         `YouTube playlistItems API failed: ${String(playlistResponse.status)}`,
@@ -320,7 +344,7 @@ function fetchChannelData(
     videosUrl.searchParams.set("id", videoIds.join(","));
     videosUrl.searchParams.set("key", apiKey);
 
-    const videosResponse = await proxyFetch(videosUrl);
+    const videosResponse = await proxyFetch(videosUrl, signal);
     if (!videosResponse.ok) {
       throw new Error(
         `YouTube videos API failed: ${String(videosResponse.status)}`,
@@ -377,7 +401,7 @@ function isYouTubeDataCached(publishers: PublisherConfig[]): boolean {
 
 export async function fetchYouTubeData(
   publishers: PublisherConfig[],
-  { force = false }: { force?: boolean } = {},
+  { force = false, signal }: { force?: boolean; signal?: AbortSignal } = {},
 ): Promise<{
   videos: FeedItem[];
   streams: FeedItem[];
@@ -391,14 +415,14 @@ export async function fetchYouTubeData(
     return { videos: [], streams: [], fromCache };
   }
 
-  const resolvedPublishers = await resolveChannelPublishers(publishers);
+  const resolvedPublishers = await resolveChannelPublishers(publishers, signal);
   if (resolvedPublishers.length === 0) {
     return { videos: [], streams: [], fromCache };
   }
 
   const results = await Promise.allSettled(
     resolvedPublishers.map(({ publisher, channelId }) =>
-      fetchChannelData(publisher, channelId, force),
+      fetchChannelData(publisher, channelId, force, signal),
     ),
   );
 

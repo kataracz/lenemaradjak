@@ -19,6 +19,7 @@ export function useRSSFeed(
   const [items, setItems] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const mountedRef = React.useRef(true);
 
   const filteredPublishers = React.useMemo(
     () => publishers.filter((p) => publisherIds.includes(p.id)),
@@ -58,6 +59,7 @@ export function useRSSFeed(
         );
 
         const results = await Promise.allSettled(promises);
+        if (!mountedRef.current) return;
 
         const successful = results
           .filter(
@@ -85,23 +87,28 @@ export function useRSSFeed(
           setItems([]);
         }
       } catch (err) {
+        if (!mountedRef.current) return;
         fromCache = false;
         setError(err instanceof Error ? err.message : String(err));
         setItems([]);
       } finally {
-        setLoading(false);
-        if (fromCache) resetCooldown();
+        if (mountedRef.current) {
+          setLoading(false);
+          if (fromCache) resetCooldown();
+        }
       }
     },
     [filteredPublishers, getFeedUrl, partialErrorMessage, resetCooldown],
   );
 
   React.useEffect(() => {
+    mountedRef.current = true;
     triggerRefresh();
     const timerId = window.setTimeout(() => {
       void load();
     }, 0);
     return () => {
+      mountedRef.current = false;
       window.clearTimeout(timerId);
     };
   }, [load, triggerRefresh]);
