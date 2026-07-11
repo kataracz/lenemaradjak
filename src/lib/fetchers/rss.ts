@@ -90,9 +90,13 @@ const parseDate = (dateValue: string | null | undefined) => {
   }
 
   const parsed = new Date(dateValue);
-  return Number.isNaN(parsed.getTime())
-    ? new Date().toISOString()
-    : parsed.toISOString();
+  if (Number.isNaN(parsed.getTime())) {
+    // Unparseable date falls back to now, which reorders the item — surface it.
+    if (import.meta.env.DEV)
+      console.warn(`Unparseable feed date: ${dateValue}`);
+    return new Date().toISOString();
+  }
+  return parsed.toISOString();
 };
 
 export async function fetchRSSFeed(

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchYouTubeData, clearYouTubeCaches } from "@/lib/fetchers/youtube";
+import {
+  fetchYouTubeData,
+  clearYouTubeCaches,
+  YouTubeQuotaError,
+} from "@/lib/fetchers/youtube";
 import type { PublisherConfig } from "@/types/dashboard";
 
 const CHANNEL_ID = "UCM-1sd-cXSuCsfWp8QMY_OQ";
@@ -22,6 +26,15 @@ function makeResponse(body: unknown) {
 
 function makeErrorResponse(status: number) {
   return { ok: false, status, json: () => Promise.resolve({}) };
+}
+
+function makeQuotaErrorResponse() {
+  return {
+    ok: false,
+    status: 403,
+    json: () =>
+      Promise.resolve({ error: { errors: [{ reason: "quotaExceeded" }] } }),
+  };
 }
 
 function make429Response(retryAfterSec: number) {
@@ -183,6 +196,16 @@ describe("fetchYouTubeData", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeErrorResponse(403)));
 
     await expect(fetchYouTubeData([PUBLISHER])).rejects.toThrow("403");
+  });
+
+  it("throws a YouTubeQuotaError when the API reports quotaExceeded", async () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeQuotaErrorResponse()));
+
+    await expect(fetchYouTubeData([PUBLISHER])).rejects.toBeInstanceOf(
+      YouTubeQuotaError,
+    );
   });
 
   it("returns partialError when one publisher fails and another succeeds", async () => {

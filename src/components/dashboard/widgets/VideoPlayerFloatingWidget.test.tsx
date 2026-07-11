@@ -5,10 +5,18 @@ import { VideoPlayerFloatingWidget } from "./VideoPlayerFloatingWidget";
 import { VideoPlayerContext } from "@/contexts/VideoPlayerContextDef";
 import type { FeedItem } from "@/types/dashboard";
 
-vi.mock("@videojs/react/video/skin.css", () => ({}));
-
 vi.mock("react-draggable", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  default: ({
+    children,
+    position,
+  }: {
+    children: React.ReactNode;
+    position?: { x: number; y: number };
+  }) => (
+    <div data-testid="draggable" data-x={position?.x} data-y={position?.y}>
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock("react-resizable", () => ({
@@ -122,5 +130,22 @@ describe("VideoPlayerFloatingWidget", () => {
     fireEvent.click(screen.getByTestId("simulate-resize"));
     const widget = screen.getByLabelText("Videólejátszó");
     expect(widget.style.width).toBe("400px");
+  });
+
+  it("nudges the player back on-screen when the window shrinks", () => {
+    const rect = { right: 2000, bottom: 100, left: 0, top: 0 } as DOMRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      rect,
+    );
+
+    setup(YOUTUBE_VIDEO);
+    expect(screen.getByTestId("draggable").getAttribute("data-x")).toBe("0");
+
+    fireEvent(window, new Event("resize"));
+
+    const overflowX = rect.right - window.innerWidth;
+    expect(screen.getByTestId("draggable").getAttribute("data-x")).toBe(
+      String(-overflowX),
+    );
   });
 });

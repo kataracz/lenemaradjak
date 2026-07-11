@@ -1,12 +1,17 @@
+const PATH_ID_PREFIXES = ["shorts", "embed", "live"];
+
 export function extractYouTubeVideoId(url: string): string | null {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname.endsWith("youtube.com")) {
-      return parsed.searchParams.get("v");
-    }
     if (parsed.hostname === "youtu.be") {
-      const id = parsed.pathname.slice(1).split("?")[0];
-      return id.length > 0 ? id : null;
+      return parsed.pathname.split("/")[1] || null;
+    }
+    if (parsed.hostname.endsWith("youtube.com")) {
+      const [, prefix, id] = parsed.pathname.split("/");
+      if (PATH_ID_PREFIXES.includes(prefix)) {
+        return id || null;
+      }
+      return parsed.searchParams.get("v");
     }
     return null;
   } catch {

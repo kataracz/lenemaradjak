@@ -1,6 +1,6 @@
 import type { DashboardLayouts } from "@/types/dashboard";
 
-const DASHBOARD_LAYOUT_KEY = "lenemaradjak-dashboard-layout";
+export const DASHBOARD_LAYOUT_KEY = "lenemaradjak-dashboard-layout";
 
 export function loadDashboardLayouts(): DashboardLayouts | null {
   if (typeof window === "undefined") {
@@ -15,7 +15,9 @@ export function loadDashboardLayouts(): DashboardLayouts | null {
 
     const parsed = JSON.parse(stored) as DashboardLayouts;
     return parsed;
-  } catch {
+  } catch (error) {
+    if (import.meta.env.DEV)
+      console.warn(`Discarding corrupt ${DASHBOARD_LAYOUT_KEY}:`, error);
     return null;
   }
 }

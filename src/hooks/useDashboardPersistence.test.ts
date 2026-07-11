@@ -40,4 +40,18 @@ describe("useDashboardPersistence", () => {
     );
     expect(result.current.layouts).toEqual(defaultLayouts);
   });
+
+  it("syncs layouts when another tab writes the storage key", () => {
+    const { result } = renderHook(() =>
+      useDashboardPersistence(defaultLayouts),
+    );
+    const external: DashboardLayouts = {
+      lg: [{ i: "widget", x: 2, y: 2, w: 8, h: 8 }],
+    };
+    act(() => {
+      localStorage.setItem(KEY, JSON.stringify(external));
+      window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    });
+    expect(result.current.layouts).toEqual(external);
+  });
 });

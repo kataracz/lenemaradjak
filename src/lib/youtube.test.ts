@@ -14,6 +14,24 @@ describe("extractYouTubeVideoId", () => {
     );
   });
 
+  it("extracts ID from a Shorts URL", () => {
+    expect(
+      extractYouTubeVideoId("https://www.youtube.com/shorts/abc123XYZ"),
+    ).toBe("abc123XYZ");
+  });
+
+  it("extracts ID from an /embed/ URL", () => {
+    expect(
+      extractYouTubeVideoId("https://www.youtube.com/embed/abc123XYZ"),
+    ).toBe("abc123XYZ");
+  });
+
+  it("extracts ID from a /live/ URL", () => {
+    expect(
+      extractYouTubeVideoId("https://www.youtube.com/live/abc123XYZ"),
+    ).toBe("abc123XYZ");
+  });
+
   it("returns null for a non-YouTube URL", () => {
     expect(extractYouTubeVideoId("https://example.com/video")).toBeNull();
   });

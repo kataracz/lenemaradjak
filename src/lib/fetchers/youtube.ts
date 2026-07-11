@@ -2,6 +2,32 @@ import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 import { PROXY_HOSTS } from "@/lib/proxy-hosts";
 import { sortByDateDesc } from "@/lib/utils";
 
+export class YouTubeQuotaError extends Error {
+  constructor() {
+    super("YouTube API quota exceeded");
+    this.name = "YouTubeQuotaError";
+  }
+}
+
+export function isYouTubeQuotaError(
+  error: unknown,
+): error is YouTubeQuotaError {
+  return error instanceof YouTubeQuotaError;
+}
+
+async function youtubeApiError(
+  response: Response,
+  context: string,
+): Promise<Error> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: { errors?: { reason?: string }[] };
+  } | null;
+  if (body?.error?.errors?.some((e) => e.reason === "quotaExceeded")) {
+    return new YouTubeQuotaError();
+  }
+  return new Error(`${context} failed: ${String(response.status)}`);
+}
+
 const getApiKey = () =>
   import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined;
 
@@ -208,8 +234,7 @@ async function resolveYouTubeChannelId(
   if (cached) return cached;
 
   return withInflight(channelResolutionInflight, publisher.id, async () => {
-    // Step 1: forHandle — modern low-cost lookup (1 quota unit), works with Brand Accounts.
-    // forUsername is deprecated and triggers accountDelegationForbidden for Brand Accounts.
+    // forHandle: 1 quota unit and works with Brand Accounts, unlike deprecated forUsername.
     const handleUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
     handleUrl.searchParams.set("part", "id");
     handleUrl.searchParams.set("forHandle", handle);
@@ -217,7 +242,7 @@ async function resolveYouTubeChannelId(
 
     const handleResponse = await proxyFetch(handleUrl, signal);
     if (!handleResponse.ok) {
-      // Genuine API error (quota, auth, etc.) — search.list would also fail, so skip it.
+      // A real API error (quota/auth) would fail search.list too, so don't fall back.
       console.warn(
         `YouTube forHandle failed for ${publisher.id}: ${String(handleResponse.status)}`,
       );
@@ -233,8 +258,7 @@ async function resolveYouTubeChannelId(
       return channelId;
     }
 
-    // forHandle returned 200 but no items — handle not recognized; try search fallback.
-    // Step 2: search fallback (100 quota units).
+    // Handle not recognized; fall back to search.list (100 quota units).
     const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
     searchUrl.searchParams.set("part", "id");
     searchUrl.searchParams.set("q", normalizeHandle(handle));
@@ -308,9 +332,7 @@ function fetchChannelData(
   if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
 
   return withInflight(channelDataInflight, channelId, async () => {
-    // Fetch 10 items to ensure a currently-live stream is captured even when
-    // the channel recently uploaded several regular videos. playlistItems.list
-    // charges 1 quota unit regardless of maxResults (up to 50).
+    // Fetch 10 so a live stream is still caught behind a few recent uploads (1 quota unit either way).
     const playlistUrl = new URL(
       "https://www.googleapis.com/youtube/v3/playlistItems",
     );
@@ -321,8 +343,9 @@ function fetchChannelData(
 
     const playlistResponse = await proxyFetch(playlistUrl, signal);
     if (!playlistResponse.ok) {
-      throw new Error(
-        `YouTube playlistItems API failed: ${String(playlistResponse.status)}`,
+      throw await youtubeApiError(
+        playlistResponse,
+        "YouTube playlistItems API",
       );
     }
 
@@ -338,7 +361,6 @@ function fetchChannelData(
       return { videos: [], streams: [] };
     }
 
-    // videos.list returns snippet.liveBroadcastContent used to split streams from videos.
     const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
     videosUrl.searchParams.set("part", "snippet");
     videosUrl.searchParams.set("id", videoIds.join(","));
@@ -346,9 +368,7 @@ function fetchChannelData(
 
     const videosResponse = await proxyFetch(videosUrl, signal);
     if (!videosResponse.ok) {
-      throw new Error(
-        `YouTube videos API failed: ${String(videosResponse.status)}`,
-      );
+      throw await youtubeApiError(videosResponse, "YouTube videos API");
     }
 
     const videosResult = (await videosResponse.json()) as {
@@ -356,19 +376,21 @@ function fetchChannelData(
     };
     const rawItems = videosResult.items ?? [];
 
-    const toFeedItem = (item: VideoItem, isLive: boolean): FeedItem => ({
-      id:
-        item.id ??
-        `${publisher.id}-${isLive ? "live" : (item.snippet?.publishedAt ?? new Date().toISOString())}`,
-      title: item.snippet?.title ?? (isLive ? "Live stream" : "Untitled"),
-      description: item.snippet?.description,
-      url: item.id ? `https://www.youtube.com/watch?v=${item.id}` : "#",
-      publishedAt: item.snippet?.publishedAt ?? new Date().toISOString(),
-      thumbnailUrl: item.snippet?.thumbnails?.medium?.url,
-      channelName: item.snippet?.channelTitle,
-      source: publisher.name,
-      isLive: isLive ? true : undefined,
-    });
+    const toFeedItem = (item: VideoItem, isLive: boolean): FeedItem => {
+      const { id, snippet } = item;
+      const publishedAt = snippet?.publishedAt ?? new Date().toISOString();
+      return {
+        id: id ?? `${publisher.id}-${isLive ? "live" : publishedAt}`,
+        title: snippet?.title ?? (isLive ? "Live stream" : "Untitled"),
+        description: snippet?.description,
+        url: id ? `https://www.youtube.com/watch?v=${id}` : "#",
+        publishedAt,
+        thumbnailUrl: snippet?.thumbnails?.medium?.url,
+        channelName: snippet?.channelTitle,
+        source: publisher.name,
+        isLive: isLive ? true : undefined,
+      };
+    };
 
     const videos = rawItems
       .filter((item) => item.snippet?.liveBroadcastContent !== "live")
@@ -456,7 +478,6 @@ export async function fetchYouTubeData(
   const videos = allVideos.sort(sortByDateDesc);
   const streams = allStreams.sort(sortByDateDesc);
 
-  // Only throw when everything failed and there is nothing to show.
   if (videos.length === 0 && streams.length === 0 && firstError) {
     throw firstError.reason instanceof Error
       ? firstError.reason

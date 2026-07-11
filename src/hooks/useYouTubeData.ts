@@ -1,8 +1,14 @@
 import * as React from "react";
 import { publishers } from "@/lib/publisher-config";
 import { useCooldown } from "@/hooks/useCooldown";
-import { fetchYouTubeData } from "@/lib/fetchers/youtube";
+import { fetchYouTubeData, isYouTubeQuotaError } from "@/lib/fetchers/youtube";
 import type { FeedItem } from "@/types/dashboard";
+
+function errorMessage(err: unknown): string {
+  if (isYouTubeQuotaError(err))
+    return "Elértük a YouTube napi API-kvótáját, próbáld újra később.";
+  return err instanceof Error ? err.message : String(err);
+}
 
 export function useYouTubeData(publisherIds: string[]): {
   videos: FeedItem[];
@@ -48,7 +54,7 @@ export function useYouTubeData(publisherIds: string[]): {
       } catch (err) {
         if (controller?.signal.aborted) return;
         console.error(err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setVideos([]);
         setStreams([]);
       } finally {

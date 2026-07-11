@@ -51,6 +51,20 @@ describe("fetchRSSFeed", () => {
     );
   });
 
+  it("falls back to now and warns on an unparseable pubDate", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const xml = RSS_XML.replace(
+      "Mon, 01 Jan 2024 10:00:00 GMT",
+      "not-a-real-date",
+    );
+    vi.stubGlobal("fetch", makeFetchOk(xml));
+
+    const { items } = await fetchRSSFeed("https://example.com/feed.xml");
+    expect(Number.isNaN(Date.parse(items[0].publishedAt))).toBe(false);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("routes through proxy for PROXY_HOSTS hostnames", async () => {
     const mockFetch = makeFetchOk(RSS_XML);
     vi.stubGlobal("fetch", mockFetch);

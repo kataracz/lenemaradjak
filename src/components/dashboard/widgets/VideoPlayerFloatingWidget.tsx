@@ -1,4 +1,3 @@
-import "@videojs/react/video/skin.css";
 import * as React from "react";
 import Draggable from "react-draggable";
 import { Resizable } from "react-resizable";
@@ -17,6 +16,28 @@ export function VideoPlayerFloatingWidget() {
   const { currentVideo, setCurrentVideo } = useVideoPlayer();
   const nodeRef = React.useRef<HTMLDivElement>(null);
   const [width, setWidth] = React.useState(DEFAULT_WIDTH);
+  const [position, setPosition] = React.useState({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    const clampIntoView = () => {
+      const node = nodeRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      setPosition((pos) => {
+        let { x, y } = pos;
+        if (rect.right > window.innerWidth) x -= rect.right - window.innerWidth;
+        if (rect.left < 0) x -= rect.left;
+        if (rect.bottom > window.innerHeight)
+          y -= rect.bottom - window.innerHeight;
+        if (rect.top < 0) y -= rect.top;
+        return x === pos.x && y === pos.y ? pos : { x, y };
+      });
+    };
+    window.addEventListener("resize", clampIntoView);
+    return () => {
+      window.removeEventListener("resize", clampIntoView);
+    };
+  }, []);
 
   if (!currentVideo) return null;
 
@@ -31,6 +52,10 @@ export function VideoPlayerFloatingWidget() {
       handle=".drag-handle"
       cancel=".react-resizable-handle, button"
       bounds="body"
+      position={position}
+      onStop={(_e, data) => {
+        setPosition({ x: data.x, y: data.y });
+      }}
     >
       <div ref={nodeRef} className="fixed bottom-6 right-6 z-50">
         <Resizable

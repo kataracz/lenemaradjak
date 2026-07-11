@@ -9,8 +9,14 @@ vi.mock("@/lib/publisher-config", () => ({
   ],
 }));
 
+const { QuotaError } = vi.hoisted(() => {
+  class QuotaError extends Error {}
+  return { QuotaError };
+});
+
 vi.mock("@/lib/fetchers/youtube", () => ({
   fetchYouTubeData: vi.fn(),
+  isYouTubeQuotaError: (err: unknown) => err instanceof QuotaError,
 }));
 
 import { useYouTubeData } from "@/hooks/useYouTubeData";
@@ -64,6 +70,18 @@ describe("useYouTubeData", () => {
     expect(result.current.videos).toEqual([]);
     expect(result.current.streams).toEqual([]);
     expect(result.current.loading).toBe(false);
+  });
+
+  it("shows a quota-specific message when fetch throws a quota error", async () => {
+    vi.mocked(fetchYouTubeData).mockRejectedValue(new QuotaError());
+
+    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(
+        "Elértük a YouTube napi API-kvótáját, próbáld újra később.",
+      );
+    });
   });
 
   it("returns empty arrays when fetch resolves with empty result", async () => {
