@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard/widget-card";
 import { FeedItemCard } from "@/components/dashboard/feed-item-card";
+import { PaginationControls } from "@/components/dashboard/pagination-controls";
 import { useRSSFeed } from "@/hooks/useRSSFeed";
+import { usePagination } from "@/hooks/usePagination";
 import type { PublisherConfig } from "@/types/dashboard";
 
 const getArticleFeedUrl = (p: PublisherConfig) => p.articleFeedUrl;
@@ -11,26 +13,50 @@ const getPartialError = (count: number) =>
     ? "Egy RSS csatorna nem töltődött be. A sikeres cikkek továbbra is megjelennek."
     : `${String(count)} RSS csatorna nem töltődött be. A sikeres cikkek továbbra is megjelennek.`;
 
-export function ArticlesWidget({ publisherIds }: { publisherIds: string[] }) {
+export function ArticlesWidget({
+  publisherIds,
+  bare,
+}: {
+  publisherIds: string[];
+  bare?: boolean;
+}) {
   const { items, loading, error, refresh, refreshDisabled } = useRSSFeed(
     publisherIds,
     getArticleFeedUrl,
     getPartialError,
   );
+  const { page, totalPages, paginatedItems, prevPage, nextPage, resetPage } =
+    usePagination(items, 10);
+
+  const handleRefresh = () => {
+    resetPage();
+    refresh();
+  };
 
   return (
     <DashboardCard
       title="Cikkek"
+      bare={bare}
       actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          disabled={refreshDisabled}
-          className="cursor-pointer"
-        >
-          Frissítés
-        </Button>
+        <div className="flex items-center gap-2">
+          {totalPages > 1 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPrev={prevPage}
+              onNext={nextPage}
+            />
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshDisabled}
+            className="cursor-pointer"
+          >
+            Frissítés
+          </Button>
+        </div>
       }
     >
       {loading ? (
@@ -49,7 +75,7 @@ export function ArticlesWidget({ publisherIds }: { publisherIds: string[] }) {
           ) : null}
           {items.length ? (
             <div className="divide-y divide-border/60">
-              {items.map((item) => (
+              {paginatedItems.map((item) => (
                 <FeedItemCard
                   key={item.id}
                   item={item}

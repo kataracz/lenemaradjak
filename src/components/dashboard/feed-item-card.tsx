@@ -19,7 +19,7 @@ export function FeedItemCard({
 }: FeedItemCardProps) {
   if (compact) {
     return (
-      <article className="flex gap-3 px-4 py-3">
+      <article className="flex gap-3 px-3 py-2 sm:px-4 sm:py-3">
         {onPlay && item.thumbnailUrl && (
           <button
             onClick={onPlay}
@@ -58,7 +58,7 @@ export function FeedItemCard({
   }
 
   return (
-    <article className="grid gap-2 px-4 py-3">
+    <article className="grid gap-2 px-3 py-2 sm:px-4 sm:py-3">
       {onPlay &&
         (item.thumbnailUrl ? (
           <button

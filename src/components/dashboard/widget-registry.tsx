@@ -9,32 +9,32 @@ export interface DashboardWidgetDefinition {
   id: DashboardWidgetType;
   title: string;
   description: string;
-  component: ComponentType<{ publisherIds: string[] }>;
+  component: ComponentType<{ publisherIds: string[]; bare?: boolean }>;
 }
 
 export const dashboardWidgets: DashboardWidgetDefinition[] = [
   {
     id: "youtubeVideos",
-    title: "Latest videos",
+    title: "Videók",
     description: "Recent uploads across your selected publishers.",
     component: YoutubeVideosWidget,
   },
   {
     id: "liveStreams",
-    title: "Live streams",
+    title: "Élők",
     description:
       "Live broadcast signals for publishers that support YouTube API live detection.",
     component: LiveStreamsWidget,
   },
   {
     id: "podcasts",
-    title: "Latest podcasts",
+    title: "Podcastok",
     description: "Newest podcast episodes from tracked publishers.",
     component: PodcastsWidget,
   },
   {
     id: "articles",
-    title: "Latest articles",
+    title: "Cikkek",
     description: "Fresh articles from selected publisher feeds.",
     component: ArticlesWidget,
   },

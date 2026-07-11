@@ -8,8 +8,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { findWidgetDefinition } from "@/components/dashboard/widget-registry";
+import { MobileDashboardTabs } from "@/components/dashboard/mobile-dashboard-tabs";
 import { useDashboardPersistence } from "@/hooks/useDashboardPersistence";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { defaultPublisherIds, publishers } from "@/lib/publisher-config";
+import { MOBILE_BREAKPOINT } from "@/lib/breakpoints";
 import type { DashboardLayouts } from "@/types/dashboard";
 import type { Layout } from "react-grid-layout";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
@@ -51,10 +54,22 @@ const defaultLayouts: DashboardLayouts = {
   ],
 };
 
-const breakpoints = { lg: 1280, md: 996, sm: 768, xs: 480, xxs: 0 };
+const breakpoints = {
+  lg: 1280,
+  md: 996,
+  sm: MOBILE_BREAKPOINT,
+  xs: 480,
+  xxs: 0,
+};
 const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
-const GRID_MARGIN: [number, number] = [12, 12];
-const GRID_CONTAINER_PADDING: [number, number] = [8, 8];
+const GRID_MARGIN = {
+  lg: [12, 12],
+  md: [12, 12],
+  sm: [12, 12],
+  xs: [8, 8],
+  xxs: [8, 8],
+} as const;
+const GRID_CONTAINER_PADDING: readonly [number, number] = [0, 0];
 const DRAG_CONFIG = {
   handle: ".drag-handle",
   cancel: "a, button, input, select, textarea",
@@ -73,6 +88,9 @@ export default function Page() {
   }, [publisherFilter]);
 
   const { width, containerRef, mounted } = useContainerWidth();
+  const isMobile = useMediaQuery(
+    `(max-width: ${String(MOBILE_BREAKPOINT - 1)}px)`,
+  );
 
   const handleLayoutChange = React.useCallback(
     (_layout: Layout, allLayouts: DashboardLayouts) => {
@@ -85,8 +103,8 @@ export default function Page() {
     <VideoPlayerProvider>
       <div className="flex min-h-screen flex-col">
         <main className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2 px-4 py-4 md:gap-4 md:py-4 lg:px-6">
-            <div className="flex flex-col gap-4 rounded-3xl border border-muted/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="@container/main flex flex-1 flex-col gap-2 px-3 py-3 md:gap-4 md:px-4 md:py-4 lg:px-6">
+            <div className="flex flex-col gap-4 rounded-3xl border border-muted/10 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div>
                 <h1 className="text-2xl font-semibold">Le ne maradjak</h1>
                 <p className="text-sm text-muted-foreground">
@@ -111,43 +129,47 @@ export default function Page() {
                 </SelectContent>
               </Select>
             </div>
-            <div
-              ref={containerRef}
-              className="rounded-3xl border border-muted/10 bg-background/80 p-1 shadow-sm"
-            >
-              {mounted && (
-                <ResponsiveGridLayout
-                  className="layout"
-                  layouts={layouts}
-                  breakpoints={breakpoints}
-                  cols={cols}
-                  rowHeight={28}
-                  margin={GRID_MARGIN}
-                  containerPadding={GRID_CONTAINER_PADDING}
-                  width={width}
-                  dragConfig={DRAG_CONFIG}
-                  onLayoutChange={handleLayoutChange}
-                >
-                  {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
-                    const widgetDef = findWidgetDefinition(item.i);
-                    if (!widgetDef) {
-                      return null;
-                    }
+            {isMobile ? (
+              <MobileDashboardTabs publisherIds={filteredPublisherIds} />
+            ) : (
+              <div
+                ref={containerRef}
+                className="rounded-3xl border border-muted/10"
+              >
+                {mounted && (
+                  <ResponsiveGridLayout
+                    className="layout"
+                    layouts={layouts}
+                    breakpoints={breakpoints}
+                    cols={cols}
+                    rowHeight={28}
+                    margin={GRID_MARGIN}
+                    containerPadding={GRID_CONTAINER_PADDING}
+                    width={width}
+                    dragConfig={DRAG_CONFIG}
+                    onLayoutChange={handleLayoutChange}
+                  >
+                    {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
+                      const widgetDef = findWidgetDefinition(item.i);
+                      if (!widgetDef) {
+                        return null;
+                      }
 
-                    return (
-                      <div
-                        key={item.i}
-                        className="rounded-3xl border border-muted/10 shadow-sm"
-                      >
-                        <widgetDef.component
-                          publisherIds={filteredPublisherIds}
-                        />
-                      </div>
-                    );
-                  })}
-                </ResponsiveGridLayout>
-              )}
-            </div>
+                      return (
+                        <div
+                          key={item.i}
+                          className="rounded-3xl border border-muted/10 shadow-sm"
+                        >
+                          <widgetDef.component
+                            publisherIds={filteredPublisherIds}
+                          />
+                        </div>
+                      );
+                    })}
+                  </ResponsiveGridLayout>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>

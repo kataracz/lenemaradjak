@@ -29,7 +29,7 @@ export function VideoPlayerFloatingWidget() {
     <Draggable
       nodeRef={nodeRef}
       handle=".drag-handle"
-      cancel=".react-resizable-handle"
+      cancel=".react-resizable-handle, button"
       bounds="body"
     >
       <div ref={nodeRef} className="fixed bottom-6 right-6 z-50">
