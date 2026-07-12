@@ -17,6 +17,12 @@ const ALLOWED_HOSTS = new Set(PROXY_HOSTS_LIST);
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GOOGLE_API_HOSTS = new Set(["googleapis.com", "www.googleapis.com"]);
 
+if (!YOUTUBE_API_KEY) {
+  console.warn(
+    "YOUTUBE_API_KEY is not set — YouTube requests will return 501.",
+  );
+}
+
 const redis = createRedisClient();
 const cacheStore = createCacheStore(redis);
 const hostRateLimiter = createRateLimiter(redis);
@@ -185,8 +191,10 @@ app.get("/api/proxy", async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Proxy server listening on http://0.0.0.0:${PORT}`);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Proxy server listening on http://0.0.0.0:${PORT}`);
+  });
+}
 
 export default app;

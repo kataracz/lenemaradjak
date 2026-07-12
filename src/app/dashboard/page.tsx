@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { findWidgetDefinition } from "@/components/dashboard/widget-registry";
 import { MobileDashboardTabs } from "@/components/dashboard/mobile-dashboard-tabs";
+import { WidgetErrorBoundary } from "@/components/dashboard/widget-error-boundary";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -168,9 +169,11 @@ export default function Page() {
                           key={item.i}
                           className="rounded-3xl border border-muted/10 shadow-sm"
                         >
-                          <widgetDef.component
-                            publisherIds={filteredPublisherIds}
-                          />
+                          <WidgetErrorBoundary title={widgetDef.title}>
+                            <widgetDef.component
+                              publisherIds={filteredPublisherIds}
+                            />
+                          </WidgetErrorBoundary>
                         </div>
                       );
                     })}

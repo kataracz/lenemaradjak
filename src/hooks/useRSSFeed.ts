@@ -1,7 +1,9 @@
 import * as React from "react";
 import { fetchRSSFeed } from "@/lib/fetchers/rss";
-import { publishers } from "@/lib/publisher-config";
 import { useCooldown } from "@/hooks/useCooldown";
+import { useFilteredPublishers } from "@/hooks/useFilteredPublishers";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { settleParallel } from "@/lib/parallel-fetch";
 import { sortByDateDesc } from "@/lib/utils";
 import type { FeedItem, PublisherConfig } from "@/types/dashboard";
 
@@ -21,10 +23,7 @@ export function useRSSFeed(
   const [error, setError] = React.useState<string | null>(null);
   const mountedRef = React.useRef(true);
 
-  const filteredPublishers = React.useMemo(
-    () => publishers.filter((p) => publisherIds.includes(p.id)),
-    [publisherIds],
-  );
+  const filteredPublishers = useFilteredPublishers(publisherIds);
 
   const {
     disabled: refreshDisabled,
@@ -47,7 +46,8 @@ export function useRSSFeed(
               Boolean(entry.url),
           );
 
-        const promises: Promise<FeedItem[]>[] = publisherFeeds.map(
+        const { fulfilled, failedCount, firstError } = await settleParallel(
+          publisherFeeds,
           async ({ publisher, url }) => {
             const result = await fetchRSSFeed(url, { force });
             if (!result.fromCache) fromCache = false;
@@ -57,32 +57,19 @@ export function useRSSFeed(
             }));
           },
         );
-
-        const results = await Promise.allSettled(promises);
         if (!mountedRef.current) return;
 
-        const successful = results
-          .filter(
-            (r): r is PromiseFulfilledResult<FeedItem[]> =>
-              r.status === "fulfilled",
-          )
-          .flatMap((r) => r.value);
+        if (failedCount > 0) fromCache = false;
 
-        const failed = results.filter(
-          (r): r is PromiseRejectedResult => r.status === "rejected",
-        );
-
-        if (failed.length > 0) fromCache = false;
-
-        const sorted = successful.sort(sortByDateDesc);
+        const sorted = fulfilled.flat().sort(sortByDateDesc);
 
         if (sorted.length > 0) {
           setItems(sorted);
-          if (failed.length > 0) {
-            setError(partialErrorMessage(failed.length));
+          if (failedCount > 0) {
+            setError(partialErrorMessage(failedCount));
           }
-        } else if (failed.length > 0) {
-          throw failed[0].reason;
+        } else if (failedCount > 0) {
+          throw firstError;
         } else {
           setItems([]);
         }
@@ -103,19 +90,12 @@ export function useRSSFeed(
 
   React.useEffect(() => {
     mountedRef.current = true;
-    triggerRefresh();
-    const timerId = window.setTimeout(() => {
-      void load();
-    }, 0);
     return () => {
       mountedRef.current = false;
-      window.clearTimeout(timerId);
     };
-  }, [load, triggerRefresh]);
+  }, []);
 
-  const refresh = React.useCallback(() => {
-    if (triggerRefresh()) void load(true);
-  }, [triggerRefresh, load]);
+  const refresh = useAutoRefresh(load, triggerRefresh);
 
   return { items, loading, error, refresh, refreshDisabled };
 }

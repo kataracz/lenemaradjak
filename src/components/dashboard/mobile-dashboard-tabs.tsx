@@ -3,6 +3,7 @@ import {
   findWidgetDefinition,
   type DashboardWidgetDefinition,
 } from "@/components/dashboard/widget-registry";
+import { WidgetErrorBoundary } from "@/components/dashboard/widget-error-boundary";
 import type { DashboardWidgetType } from "@/types/dashboard";
 
 const MOBILE_TAB_ORDER: DashboardWidgetType[] = [
@@ -32,7 +33,9 @@ export function MobileDashboardTabs({
       </TabsList>
       {widgets.map((widget) => (
         <TabsContent key={widget.id} value={widget.id}>
-          <widget.component publisherIds={publisherIds} bare />
+          <WidgetErrorBoundary title={widget.title} bare>
+            <widget.component publisherIds={publisherIds} bare />
+          </WidgetErrorBoundary>
         </TabsContent>
       ))}
     </Tabs>
