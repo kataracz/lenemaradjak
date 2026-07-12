@@ -44,7 +44,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.videos).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("useYouTubeData", () => {
       new Error("YouTube API failed"),
     );
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.error).toBe("YouTube API failed");
@@ -75,7 +75,7 @@ describe("useYouTubeData", () => {
   it("shows a quota-specific message when fetch throws a quota error", async () => {
     vi.mocked(fetchYouTubeData).mockRejectedValue(new QuotaError());
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.error).toBe(
@@ -91,7 +91,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -109,7 +109,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -126,7 +126,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.videos).toHaveLength(1);
@@ -142,7 +142,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     expect(result.current.refreshDisabled).toBe(true);
 
@@ -160,7 +160,7 @@ describe("useYouTubeData", () => {
       fromCache: true,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     expect(result.current.refreshDisabled).toBe(true);
 
