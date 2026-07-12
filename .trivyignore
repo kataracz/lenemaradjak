@@ -1,0 +1,11 @@
+# Trivy vulnerability waivers.
+#
+# Each entry is a CVE we have reviewed and consciously accept, with the reason.
+# Keep this list short and revisit it when the base image is updated.
+
+# CVE-2026-12151 — undici DoS via unbounded WebSocket memory growth.
+# Present only in the undici bundled *inside npm* in the node:24-slim base image
+# (usr/local/lib/node_modules/npm/node_modules/undici), NOT a proxy dependency
+# and not on the proxy's runtime path (npm is not invoked at runtime). Fixable
+# only upstream when node:24-slim ships a newer bundled npm. Reviewed 2026-07-12.
+CVE-2026-12151
