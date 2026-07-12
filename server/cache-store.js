@@ -1,5 +1,12 @@
 const MAX_MEMORY_ENTRIES = 200;
 
+// Only 2xx upstream responses are worth memoizing — caching an error would
+// replay it as truth (with a 200 wrapper, see proxy-server.js) for the full
+// TTL instead of letting the next request retry upstream.
+export function isCacheableStatus(status) {
+  return status >= 200 && status < 300;
+}
+
 // Entries live for 2x the requested TTL: the first half is "fresh" (served
 // directly), the second half is "stale" and only returned via getStale() so
 // the caller can attempt conditional revalidation (ETag/If-Modified-Since)

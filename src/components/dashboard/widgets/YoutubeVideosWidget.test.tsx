@@ -87,6 +87,7 @@ function mockFeed(
     refresh: vi.fn(),
     refreshDisabled: false,
     hasConfiguredChannels: true,
+    notConfigured: false,
     ...overrides,
   });
 }

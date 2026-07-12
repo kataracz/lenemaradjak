@@ -10,7 +10,7 @@ import {
 import { findWidgetDefinition } from "@/components/dashboard/widget-registry";
 import { MobileDashboardTabs } from "@/components/dashboard/mobile-dashboard-tabs";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
-import { useDashboardPersistence } from "@/hooks/useDashboardPersistence";
+import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { defaultPublisherIds, publishers } from "@/lib/publisher-config";
 import { MOBILE_BREAKPOINT } from "@/lib/breakpoints";
@@ -78,8 +78,11 @@ const DRAG_CONFIG = {
 const publisherOptions = [{ id: "all", name: "Összes kiadó" }, ...publishers];
 
 export default function Page() {
-  const { layouts, setLayouts } = useDashboardPersistence(defaultLayouts);
-  const [publisherFilter, setPublisherFilter] = React.useState<string>("all");
+  const { layouts, setLayouts, publisherFilter, setPublisherFilter } =
+    useDashboardPreferences({
+      layouts: defaultLayouts,
+      publisherFilter: "all",
+    });
 
   const filteredPublisherIds = React.useMemo(() => {
     if (publisherFilter === "all") {
@@ -107,9 +110,10 @@ export default function Page() {
           <div className="@container/main flex flex-1 flex-col gap-2 px-3 py-3 md:gap-4 md:px-4 md:py-4 lg:px-6">
             <div className="flex flex-col gap-4 rounded-3xl border border-muted/10 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div>
-                <h1 className="text-2xl font-semibold">Le ne maradjak</h1>
+                <h1 className="text-2xl font-semibold">Le ne maradjak!</h1>
                 <p className="text-sm text-muted-foreground">
-                  Cikkek, podcastok, videók és élő adások egy helyen.
+                  Hírek, élő adások, videók és podcastok egy helyen, hogy le ne
+                  maradj!
                 </p>
               </div>
               <div className="flex items-center gap-2">

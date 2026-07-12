@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { loadDashboardLayouts, saveDashboardLayouts } from "@/lib/persistence";
+import {
+  loadDashboardPreferences,
+  saveDashboardPreferences,
+} from "@/lib/persistence";
 
-const KEY = "lenemaradjak-dashboard-layout";
+const KEY = "lenemaradjak-dashboard-preferences";
 
 describe("persistence", () => {
   beforeEach(() => {
@@ -9,19 +12,22 @@ describe("persistence", () => {
   });
 
   it("returns null when localStorage is empty", () => {
-    expect(loadDashboardLayouts()).toBeNull();
+    expect(loadDashboardPreferences()).toBeNull();
   });
 
-  it("round-trips layouts through save and load", () => {
-    const layouts = { lg: [{ i: "a", x: 0, y: 0, w: 4, h: 4 }] };
-    saveDashboardLayouts(layouts);
-    expect(loadDashboardLayouts()).toEqual(layouts);
+  it("round-trips preferences through save and load", () => {
+    const preferences = {
+      layouts: { lg: [{ i: "a", x: 0, y: 0, w: 4, h: 4 }] },
+      publisherFilter: "telex",
+    };
+    saveDashboardPreferences(preferences);
+    expect(loadDashboardPreferences()).toEqual(preferences);
   });
 
   it("returns null and warns when stored JSON is malformed", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     localStorage.setItem(KEY, "not-valid-json{{");
-    expect(loadDashboardLayouts()).toBeNull();
+    expect(loadDashboardPreferences()).toBeNull();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -31,7 +37,7 @@ describe("persistence", () => {
       throw new DOMException("QuotaExceededError");
     });
     expect(() => {
-      saveDashboardLayouts({ lg: [] });
+      saveDashboardPreferences({ layouts: { lg: [] }, publisherFilter: "all" });
     }).not.toThrow();
   });
 });

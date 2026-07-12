@@ -28,8 +28,14 @@ async function youtubeApiError(
   return new Error(`${context} failed: ${String(response.status)}`);
 }
 
-const getApiKey = () =>
-  import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined;
+// Discovered lazily: the proxy returns 501 for googleapis.com requests when
+// YOUTUBE_API_KEY isn't configured server-side. There's no client-side flag —
+// once a request reveals this, skip further network calls for the session.
+let youtubeUnavailable = false;
+
+function isNotConfiguredResponse(response: Response): boolean {
+  return response.status === 501;
+}
 
 const CHANNEL_ID_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const channelIdCache = new Map<string, { expires: number; id: string }>();
@@ -225,8 +231,7 @@ async function resolveYouTubeChannelId(
     return publisher.youtubeChannelId;
   }
 
-  const apiKey = getApiKey();
-  if (!apiKey) return undefined;
+  if (youtubeUnavailable) return undefined;
   const handle = publisher.youtubeChannelHandle;
   if (!handle) return undefined;
 
@@ -238,9 +243,12 @@ async function resolveYouTubeChannelId(
     const handleUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
     handleUrl.searchParams.set("part", "id");
     handleUrl.searchParams.set("forHandle", handle);
-    handleUrl.searchParams.set("key", apiKey);
 
     const handleResponse = await proxyFetch(handleUrl, signal);
+    if (isNotConfiguredResponse(handleResponse)) {
+      youtubeUnavailable = true;
+      return undefined;
+    }
     if (!handleResponse.ok) {
       // A real API error (quota/auth) would fail search.list too, so don't fall back.
       console.warn(
@@ -264,7 +272,6 @@ async function resolveYouTubeChannelId(
     searchUrl.searchParams.set("q", normalizeHandle(handle));
     searchUrl.searchParams.set("type", "channel");
     searchUrl.searchParams.set("maxResults", "1");
-    searchUrl.searchParams.set("key", apiKey);
 
     const searchResponse = await proxyFetch(searchUrl, signal);
     if (!searchResponse.ok) {
@@ -328,8 +335,7 @@ function fetchChannelData(
     if (cached) return Promise.resolve(cached);
   }
 
-  const apiKey = getApiKey();
-  if (!apiKey) return Promise.resolve({ videos: [], streams: [] });
+  if (youtubeUnavailable) return Promise.resolve({ videos: [], streams: [] });
 
   return withInflight(channelDataInflight, channelId, async () => {
     // Fetch 10 so a live stream is still caught behind a few recent uploads (1 quota unit either way).
@@ -339,9 +345,12 @@ function fetchChannelData(
     playlistUrl.searchParams.set("part", "contentDetails");
     playlistUrl.searchParams.set("playlistId", getUploadsPlaylistId(channelId));
     playlistUrl.searchParams.set("maxResults", "10");
-    playlistUrl.searchParams.set("key", apiKey);
 
     const playlistResponse = await proxyFetch(playlistUrl, signal);
+    if (isNotConfiguredResponse(playlistResponse)) {
+      youtubeUnavailable = true;
+      return { videos: [], streams: [] };
+    }
     if (!playlistResponse.ok) {
       throw await youtubeApiError(
         playlistResponse,
@@ -364,7 +373,6 @@ function fetchChannelData(
     const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
     videosUrl.searchParams.set("part", "snippet");
     videosUrl.searchParams.set("id", videoIds.join(","));
-    videosUrl.searchParams.set("key", apiKey);
 
     const videosResponse = await proxyFetch(videosUrl, signal);
     if (!videosResponse.ok) {
@@ -406,7 +414,7 @@ function fetchChannelData(
 }
 
 function isYouTubeDataCached(publishers: PublisherConfig[]): boolean {
-  if (!getApiKey()) return true;
+  if (youtubeUnavailable) return true;
 
   return publishers.every((publisher) => {
     if (!publisher.youtubeChannelId && !publisher.youtubeChannelHandle) {
@@ -429,17 +437,22 @@ export async function fetchYouTubeData(
   streams: FeedItem[];
   partialError?: string;
   fromCache: boolean;
+  notConfigured: boolean;
 }> {
   const fromCache = !force && isYouTubeDataCached(publishers);
 
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    return { videos: [], streams: [], fromCache };
+  if (youtubeUnavailable) {
+    return { videos: [], streams: [], fromCache, notConfigured: true };
   }
 
   const resolvedPublishers = await resolveChannelPublishers(publishers, signal);
   if (resolvedPublishers.length === 0) {
-    return { videos: [], streams: [], fromCache };
+    return {
+      videos: [],
+      streams: [],
+      fromCache,
+      notConfigured: youtubeUnavailable,
+    };
   }
 
   const results = await Promise.allSettled(
@@ -489,7 +502,13 @@ export async function fetchYouTubeData(
       ? `${failedCount === 1 ? "Egy" : String(failedCount)} YouTube csatorna nem töltődött be. A sikeresen betöltött tartalmak megjelennek.`
       : undefined;
 
-  return { videos, streams, partialError, fromCache };
+  return {
+    videos,
+    streams,
+    partialError,
+    fromCache,
+    notConfigured: youtubeUnavailable,
+  };
 }
 
 export function clearYouTubeCaches(): void {
@@ -497,4 +516,5 @@ export function clearYouTubeCaches(): void {
   channelDataCache.clear();
   channelDataInflight.clear();
   channelResolutionInflight.clear();
+  youtubeUnavailable = false;
 }

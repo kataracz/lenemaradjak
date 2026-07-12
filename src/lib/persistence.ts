@@ -1,34 +1,42 @@
 import type { DashboardLayouts } from "@/types/dashboard";
 
-export const DASHBOARD_LAYOUT_KEY = "lenemaradjak-dashboard-layout";
+export const DASHBOARD_PREFERENCES_KEY = "lenemaradjak-dashboard-preferences";
 
-export function loadDashboardLayouts(): DashboardLayouts | null {
+export interface DashboardPreferences {
+  layouts: DashboardLayouts;
+  publisherFilter: string;
+}
+
+export function loadDashboardPreferences(): DashboardPreferences | null {
   if (typeof window === "undefined") {
     return null;
   }
 
   try {
-    const stored = window.localStorage.getItem(DASHBOARD_LAYOUT_KEY);
+    const stored = window.localStorage.getItem(DASHBOARD_PREFERENCES_KEY);
     if (!stored) {
       return null;
     }
 
-    const parsed = JSON.parse(stored) as DashboardLayouts;
+    const parsed = JSON.parse(stored) as DashboardPreferences;
     return parsed;
   } catch (error) {
     if (import.meta.env.DEV)
-      console.warn(`Discarding corrupt ${DASHBOARD_LAYOUT_KEY}:`, error);
+      console.warn(`Discarding corrupt ${DASHBOARD_PREFERENCES_KEY}:`, error);
     return null;
   }
 }
 
-export function saveDashboardLayouts(layouts: DashboardLayouts) {
+export function saveDashboardPreferences(preferences: DashboardPreferences) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    window.localStorage.setItem(DASHBOARD_LAYOUT_KEY, JSON.stringify(layouts));
+    window.localStorage.setItem(
+      DASHBOARD_PREFERENCES_KEY,
+      JSON.stringify(preferences),
+    );
   } catch (error) {
     if (import.meta.env.DEV) console.warn(error);
   }

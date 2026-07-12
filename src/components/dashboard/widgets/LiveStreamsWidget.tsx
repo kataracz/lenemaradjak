@@ -21,13 +21,12 @@ export function LiveStreamsWidget({
     refresh,
     refreshDisabled,
     hasConfiguredChannels,
+    notConfigured,
   } = useYouTubeData(publisherIds);
   const { setCurrentVideo } = useVideoPlayer();
   const { ref: containerRef, isWide } = useContainerWidth();
   const { page, totalPages, paginatedItems, prevPage, nextPage, resetPage } =
     usePagination(streams, 10);
-
-  const hasYouTubeApiKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY);
 
   const handleRefresh = () => {
     resetPage();
@@ -104,11 +103,11 @@ export function LiveStreamsWidget({
               ))}
             </div>
           ) : !error ? (
-            !hasYouTubeApiKey || !hasConfiguredChannels ? (
+            notConfigured || !hasConfiguredChannels ? (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                 Az élő közvetítés-felismerés nem aktív. Add meg a
-                `VITE_YOUTUBE_API_KEY` értékét és ellenőrizd a kiadók
-                YouTube-csatorna adatait.
+                `YOUTUBE_API_KEY` értékét a proxy szerveren, és ellenőrizd a
+                kiadók YouTube-csatorna adatait.
               </div>
             ) : (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">

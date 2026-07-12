@@ -47,7 +47,7 @@ npx tsc --noEmit     # Type-check without emitting
 
 - Use stable array references at module scope in `renderHook` tests to prevent
   infinite effects
-- Stub `VITE_YOUTUBE_API_KEY` to `''` for no-key tests
+- Mock a `501` proxy response to exercise the YouTube-not-configured state
 - Use URL-dispatch mocks (`mockImplementation((url) => ...)`) for parallel
   fetches across multiple publishers
 

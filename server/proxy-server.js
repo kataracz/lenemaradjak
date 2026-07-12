@@ -2,9 +2,10 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import PROXY_HOSTS_LIST from "../src/lib/proxy-hosts.json" with { type: "json" };
 import { createRedisClient } from "./redis-client.js";
-import { createCacheStore } from "./cache-store.js";
+import { createCacheStore, isCacheableStatus } from "./cache-store.js";
 import { createRateLimiter } from "./rate-limiter.js";
 import { resolveByHost } from "./host-config.js";
+import { validateTarget, fetchWithRedirectGuard } from "./redirect-guard.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +13,9 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
 const DEV_CONTACT = process.env.DEV_CONTACT;
 
 const ALLOWED_HOSTS = new Set(PROXY_HOSTS_LIST);
+
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const GOOGLE_API_HOSTS = new Set(["googleapis.com", "www.googleapis.com"]);
 
 const redis = createRedisClient();
 const cacheStore = createCacheStore(redis);
@@ -49,20 +53,18 @@ app.get("/api/proxy", async (req, res) => {
   if (!url || typeof url !== "string")
     return res.status(400).json({ error: "Missing url" });
 
-  let target;
-  try {
-    target = new URL(url);
-  } catch {
-    return res.status(400).json({ error: "Invalid url" });
+  const { target, error } = validateTarget(url, ALLOWED_HOSTS);
+  if (error) {
+    return res.status(error.status).json(error.body);
   }
 
-  if (!["http:", "https:"].includes(target.protocol)) {
-    return res.status(400).json({ error: "Only HTTP(S) URLs allowed" });
+  if (GOOGLE_API_HOSTS.has(target.hostname)) {
+    if (!YOUTUBE_API_KEY) {
+      return res.status(501).json({ error: "youtube_not_configured" });
+    }
+    target.searchParams.set("key", YOUTUBE_API_KEY);
   }
-
-  if (!ALLOWED_HOSTS.has(target.hostname)) {
-    return res.status(403).json({ error: "Host not allowed" });
-  }
+  const fetchUrl = target.toString();
 
   const cacheKey = url;
   const ttl = getCacheTtlSeconds(target.hostname);
@@ -102,16 +104,20 @@ app.get("/api/proxy", async (req, res) => {
     const timeout = setTimeout(() => controller.abort(), 10000);
     let response;
     try {
-      response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          "User-Agent": `Lenemaradjak/1.0 WIP RSS Reader  (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
-          ...(stale?.lastModified
-            ? { "If-Modified-Since": stale.lastModified }
-            : {}),
-          ...(stale?.etag ? { "If-None-Match": stale.etag } : {}),
+      response = await fetchWithRedirectGuard(
+        fetchUrl,
+        {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": `Lenemaradjak/1.0 WIP RSS Reader  (personal aggregator, contact: ${DEV_CONTACT ?? "n/a"})`,
+            ...(stale?.lastModified
+              ? { "If-Modified-Since": stale.lastModified }
+              : {}),
+            ...(stale?.etag ? { "If-None-Match": stale.etag } : {}),
+          },
         },
-      });
+        ALLOWED_HOSTS,
+      );
     } finally {
       clearTimeout(timeout);
     }
@@ -139,13 +145,16 @@ app.get("/api/proxy", async (req, res) => {
     }
 
     const buffer = Buffer.from(body);
-    const etag = response.headers.get("etag") ?? null;
-    const lastModified = response.headers.get("last-modified") ?? null;
-    await cacheStore.set(
-      cacheKey,
-      { contentType, body: buffer, etag, lastModified },
-      ttl,
-    );
+
+    if (isCacheableStatus(response.status)) {
+      const etag = response.headers.get("etag") ?? null;
+      const lastModified = response.headers.get("last-modified") ?? null;
+      await cacheStore.set(
+        cacheKey,
+        { contentType, body: buffer, etag, lastModified },
+        ttl,
+      );
+    }
 
     return { status: response.status, contentType, body: buffer };
   })();
@@ -164,8 +173,10 @@ app.get("/api/proxy", async (req, res) => {
     if (err.name === "AbortError") {
       return res.status(504).json({ error: "Upstream request timed out" });
     }
-    if (err.statusCode === 413) {
-      return res.status(413).json({ error: RESPONSE_TOO_LARGE });
+    if (err.statusCode) {
+      return res
+        .status(err.statusCode)
+        .json(err.body ?? { error: err.message });
     }
     console.error("Upstream fetch failed:", err);
     return res.status(502).json({ error: "Failed to fetch upstream" });

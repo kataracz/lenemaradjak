@@ -29,13 +29,13 @@ npm run dev
 
 ## Environment variables
 
-| Variable                   | Required   | Description                                                                                                         |
-| -------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `VITE_YOUTUBE_API_KEY`     | Yes        | YouTube Data API v3 key                                                                                             |
-| `ALLOWED_ORIGIN`           | Proxy only | Origin the proxy allows CORS requests from (default: `http://localhost:5173`)                                       |
-| `DEV_CONTACT`              | Optional   | Contact address included in the `User-Agent` header sent to upstream RSS servers                                    |
-| `UPSTASH_REDIS_REST_URL`   | Optional   | Upstash Redis REST URL — enables shared cache and rate limits across proxy instances instead of per-instance memory |
-| `UPSTASH_REDIS_REST_TOKEN` | Optional   | Upstash Redis REST token, used together with `UPSTASH_REDIS_REST_URL`                                               |
+| Variable                   | Required   | Description                                                                                                                                                                                                   |
+| -------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `YOUTUBE_API_KEY`          | Proxy only | YouTube Data API v3 key, injected server-side by the proxy so it's never shipped to the browser. Without it, the proxy returns `501` for YouTube API requests and the widgets show a "not configured" message |
+| `ALLOWED_ORIGIN`           | Proxy only | Origin the proxy allows CORS requests from (default: `http://localhost:5173`)                                                                                                                                 |
+| `DEV_CONTACT`              | Optional   | Contact address included in the `User-Agent` header sent to upstream RSS servers                                                                                                                              |
+| `UPSTASH_REDIS_REST_URL`   | Optional   | Upstash Redis REST URL — enables shared cache and rate limits across proxy instances instead of per-instance memory                                                                                           |
+| `UPSTASH_REDIS_REST_TOKEN` | Optional   | Upstash Redis REST token, used together with `UPSTASH_REDIS_REST_URL`                                                                                                                                         |
 
 ## Commands
 
@@ -73,7 +73,10 @@ fail in the browser.
   internet
 - CORS restricted to frontend origin via `ALLOWED_ORIGIN`
 - `ALLOWED_HOSTS` allowlist in `server/proxy-server.js` (kept in sync with
-  `src/lib/proxy-hosts.ts`) limits which upstream domains can be proxied
+  `src/lib/proxy-hosts.ts`) limits which upstream domains can be proxied;
+  redirects are followed manually and re-validated against the same allowlist
+  (`server/redirect-guard.js`), so an allow-listed host can't redirect the proxy
+  to an arbitrary target
 - Per-IP rate limiting (200 req/15 min) and per-host upstream limiting (15
   req/60 s)
 - Responses larger than 5 MB are rejected; 10-second request timeout
@@ -92,7 +95,11 @@ Upstash Redis provides shared cache and rate-limit state across instances.
 On PRs and non-master pushes, CI runs lint, format check, tests, and a build.
 
 Required GitHub secrets: `GCP_SA_KEY`, `FIREBASE_SERVICE_ACCOUNT`,
-`VITE_YOUTUBE_API_KEY`, `DEV_CONTACT`.
+`DEV_CONTACT`.
+
+`YOUTUBE_API_KEY` is not a GitHub secret — it lives in GCP Secret Manager and is
+injected into the Cloud Run proxy via `--set-secrets` (see below), so it's never
+present in the client build.
 
 **Manual deploy:**
 
@@ -105,10 +112,10 @@ gcloud run deploy lenemaradjak-proxy \
   --region europe-west1 --min-instances 0 --max-instances 2 \
   --allow-unauthenticated \
   --set-env-vars ALLOWED_ORIGIN=https://lenemaradjak.web.app,DEV_CONTACT=your@email.com \
-  --set-secrets UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest
+  --set-secrets UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest
 
 # Frontend
-VITE_YOUTUBE_API_KEY=your_key npm run build
+npm run build
 firebase deploy --only hosting
 ```
 
@@ -121,6 +128,7 @@ back to in-memory automatically when Redis env vars are absent.
 | Path                           | Purpose                                     |
 | ------------------------------ | ------------------------------------------- |
 | `server/proxy-server.js`       | Proxy entrypoint                            |
+| `server/redirect-guard.js`     | Validates target host + re-checks redirects |
 | `server/cache-store.js`        | Dual memory/Redis cache                     |
 | `server/rate-limiter.js`       | Dual memory/Redis rate limiter              |
 | `server/redis-client.js`       | Upstash REST client                         |
