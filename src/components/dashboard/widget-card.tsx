@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { DragDropVerticalIcon } from "@hugeicons/core-free-icons";
 
@@ -15,6 +16,8 @@ interface DashboardCardProps {
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Hides the drag handle (has no effect outside a draggable grid). */
+  bare?: boolean;
 }
 
 export function DashboardCard({
@@ -23,17 +26,25 @@ export function DashboardCard({
   actions,
   children,
   className,
+  bare = false,
 }: DashboardCardProps) {
   return (
     <Card size="sm" className={className ?? "h-full"}>
       <CardHeader className="flex! flex-row items-center gap-3 select-none">
-        <div className="drag-handle flex flex-1 items-center gap-2">
-          <HugeiconsIcon
-            icon={DragDropVerticalIcon}
-            size={24}
-            aria-hidden="true"
-            className="shrink-0 text-muted-foreground/60 cursor-move"
-          />
+        <div
+          className={cn(
+            "flex flex-1 items-center gap-2",
+            !bare && "drag-handle",
+          )}
+        >
+          {!bare && (
+            <HugeiconsIcon
+              icon={DragDropVerticalIcon}
+              size={24}
+              aria-hidden="true"
+              className="shrink-0 text-muted-foreground/60 cursor-move"
+            />
+          )}
           <div>
             <CardTitle>{title}</CardTitle>
             {description ? (

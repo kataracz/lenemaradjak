@@ -69,6 +69,12 @@ export function clearRSSCache(url: string) {
   }
 }
 
+const stripHtml = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const parsed = new DOMParser().parseFromString(value, "text/html");
+  return parsed.body.textContent.trim() || undefined;
+};
+
 const parseText = (parent: Element | null, selectors: string[]) => {
   if (!parent) {
     return undefined;
@@ -90,9 +96,13 @@ const parseDate = (dateValue: string | null | undefined) => {
   }
 
   const parsed = new Date(dateValue);
-  return Number.isNaN(parsed.getTime())
-    ? new Date().toISOString()
-    : parsed.toISOString();
+  if (Number.isNaN(parsed.getTime())) {
+    // Unparseable date falls back to now, which reorders the item — surface it.
+    if (import.meta.env.DEV)
+      console.warn(`Unparseable feed date: ${dateValue}`);
+    return new Date().toISOString();
+  }
+  return parsed.toISOString();
 };
 
 export async function fetchRSSFeed(
@@ -154,7 +164,7 @@ export async function fetchRSSFeed(
       return {
         id: link ?? `${title ?? "item"}-${publishedAt}`,
         title: title ?? "Untitled",
-        description: description ?? undefined,
+        description: stripHtml(description),
         url: link ?? "#",
         publishedAt,
         thumbnailUrl,

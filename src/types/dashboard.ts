@@ -1,10 +1,7 @@
 import type { ResponsiveLayouts } from "react-grid-layout";
 
 export type DashboardWidgetType =
-  | "youtubeVideos"
-  | "liveStreams"
-  | "podcasts"
-  | "articles";
+  "youtubeVideos" | "liveStreams" | "podcasts" | "articles";
 
 export type DashboardLayouts = ResponsiveLayouts;
 

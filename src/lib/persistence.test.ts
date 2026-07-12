@@ -18,9 +18,12 @@ describe("persistence", () => {
     expect(loadDashboardLayouts()).toEqual(layouts);
   });
 
-  it("returns null when stored JSON is malformed", () => {
+  it("returns null and warns when stored JSON is malformed", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     localStorage.setItem(KEY, "not-valid-json{{");
     expect(loadDashboardLayouts()).toBeNull();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("does not throw when localStorage.setItem throws QuotaExceededError", () => {

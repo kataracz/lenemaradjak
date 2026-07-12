@@ -176,4 +176,55 @@ describe("useRSSFeed", () => {
       expect(result.current.refreshDisabled).toBe(false);
     });
   });
+
+  it("does not throw when the initial load resolves after unmount", async () => {
+    let resolveFetch!: (value: {
+      items: FeedItem[];
+      fromCache: boolean;
+    }) => void;
+    vi.mocked(fetchRSSFeed).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { unmount } = renderHook(() =>
+      useRSSFeed(IDS_PUB1, getUrl, getPartialError),
+    );
+
+    await waitFor(() => {
+      expect(fetchRSSFeed).toHaveBeenCalled();
+    });
+    unmount();
+
+    resolveFetch({ items: [ITEM_1], fromCache: false });
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it("does not throw when a manual refresh resolves after unmount", async () => {
+    vi.mocked(fetchRSSFeed).mockResolvedValue({ items: [], fromCache: true });
+
+    const { result, unmount } = renderHook(() =>
+      useRSSFeed(IDS_PUB1, getUrl, getPartialError),
+    );
+
+    await waitFor(() => {
+      expect(result.current.refreshDisabled).toBe(false);
+    });
+
+    let resolveRefresh!: (value: {
+      items: FeedItem[];
+      fromCache: boolean;
+    }) => void;
+    vi.mocked(fetchRSSFeed).mockReturnValue(
+      new Promise((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    );
+    result.current.refresh();
+
+    unmount();
+    resolveRefresh({ items: [ITEM_1], fromCache: false });
+    await new Promise((r) => setTimeout(r, 0));
+  });
 });

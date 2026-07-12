@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchYouTubeData, clearYouTubeCaches } from "@/lib/fetchers/youtube";
+import {
+  fetchYouTubeData,
+  clearYouTubeCaches,
+  YouTubeQuotaError,
+} from "@/lib/fetchers/youtube";
 import type { PublisherConfig } from "@/types/dashboard";
 
 const CHANNEL_ID = "UCM-1sd-cXSuCsfWp8QMY_OQ";
@@ -22,6 +26,24 @@ function makeResponse(body: unknown) {
 
 function makeErrorResponse(status: number) {
   return { ok: false, status, json: () => Promise.resolve({}) };
+}
+
+function makeQuotaErrorResponse() {
+  return {
+    ok: false,
+    status: 403,
+    json: () =>
+      Promise.resolve({ error: { errors: [{ reason: "quotaExceeded" }] } }),
+  };
+}
+
+function make429Response(retryAfterSec: number) {
+  return {
+    ok: false,
+    status: 429,
+    headers: { get: () => String(retryAfterSec) },
+    json: () => Promise.resolve({}),
+  };
 }
 
 function makePlaylistResponse(videoIds: string[]) {
@@ -63,6 +85,7 @@ describe("fetchYouTubeData", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("returns empty arrays when VITE_YOUTUBE_API_KEY is not set", async () => {
@@ -175,6 +198,16 @@ describe("fetchYouTubeData", () => {
     await expect(fetchYouTubeData([PUBLISHER])).rejects.toThrow("403");
   });
 
+  it("throws a YouTubeQuotaError when the API reports quotaExceeded", async () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeQuotaErrorResponse()));
+
+    await expect(fetchYouTubeData([PUBLISHER])).rejects.toBeInstanceOf(
+      YouTubeQuotaError,
+    );
+  });
+
   it("returns partialError when one publisher fails and another succeeds", async () => {
     vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
 
@@ -251,5 +284,48 @@ describe("fetchYouTubeData", () => {
     const { videos } = await fetchYouTubeData([PUBLISHER, PUBLISHER_2]);
     expect(videos[0].title).toBe("Newer");
     expect(videos[1].title).toBe("Older");
+  });
+
+  it("cancels the 429 retry wait when the signal aborts, without retrying", async () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+    vi.useFakeTimers();
+
+    const mockFetch = vi.fn().mockResolvedValueOnce(make429Response(5));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const controller = new AbortController();
+    const promise = fetchYouTubeData([PUBLISHER], {
+      signal: controller.signal,
+    });
+    promise.catch(() => undefined);
+
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(5000);
+
+    await expect(promise).rejects.toBeTruthy();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("still retries and succeeds on 429 when not aborted", async () => {
+    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(make429Response(5))
+      .mockResolvedValueOnce(makePlaylistResponse(["vid1"]))
+      .mockResolvedValueOnce(
+        makeVideosResponse([{ id: "vid1", title: "Retried" }]),
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const promise = fetchYouTubeData([PUBLISHER]);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const { videos } = await promise;
+    expect(videos).toHaveLength(1);
+    expect(videos[0].title).toBe("Retried");
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 });

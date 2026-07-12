@@ -131,6 +131,14 @@
       fixed;
     min-height: 100vh;
   }
+  .dark body {
+    background: linear-gradient(
+        135deg,
+        oklch(0.17 0.015 165),
+        oklch(0.14 0.01 185)
+      )
+      fixed;
+  }
   [data-slot="card"] {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

@@ -9,12 +9,20 @@ vi.mock("@/lib/publisher-config", () => ({
   ],
 }));
 
+const { QuotaError } = vi.hoisted(() => {
+  class QuotaError extends Error {}
+  return { QuotaError };
+});
+
 vi.mock("@/lib/fetchers/youtube", () => ({
   fetchYouTubeData: vi.fn(),
+  isYouTubeQuotaError: (err: unknown) => err instanceof QuotaError,
 }));
 
 import { useYouTubeData } from "@/hooks/useYouTubeData";
 import { fetchYouTubeData } from "@/lib/fetchers/youtube";
+
+const IDS_PUB1 = ["pub1"];
 
 const ITEM: FeedItem = {
   id: "vid1",
@@ -36,7 +44,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.videos).toHaveLength(1);
@@ -53,7 +61,7 @@ describe("useYouTubeData", () => {
       new Error("YouTube API failed"),
     );
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.error).toBe("YouTube API failed");
@@ -64,6 +72,18 @@ describe("useYouTubeData", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("shows a quota-specific message when fetch throws a quota error", async () => {
+    vi.mocked(fetchYouTubeData).mockRejectedValue(new QuotaError());
+
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(
+        "Elértük a YouTube napi API-kvótáját, próbáld újra később.",
+      );
+    });
+  });
+
   it("returns empty arrays when fetch resolves with empty result", async () => {
     vi.mocked(fetchYouTubeData).mockResolvedValue({
       videos: [],
@@ -71,7 +91,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -89,7 +109,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -106,7 +126,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     await waitFor(() => {
       expect(result.current.videos).toHaveLength(1);
@@ -122,7 +142,7 @@ describe("useYouTubeData", () => {
       fromCache: false,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     expect(result.current.refreshDisabled).toBe(true);
 
@@ -140,12 +160,57 @@ describe("useYouTubeData", () => {
       fromCache: true,
     });
 
-    const { result } = renderHook(() => useYouTubeData(["pub1"]));
+    const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
 
     expect(result.current.refreshDisabled).toBe(true);
 
     await waitFor(() => {
       expect(result.current.refreshDisabled).toBe(false);
     });
+  });
+
+  it("passes an AbortSignal to fetchYouTubeData and aborts it on unmount", async () => {
+    vi.mocked(fetchYouTubeData).mockResolvedValue({
+      videos: [],
+      streams: [],
+      fromCache: false,
+    });
+
+    const { unmount } = renderHook(() => useYouTubeData(IDS_PUB1));
+
+    await waitFor(() => {
+      expect(fetchYouTubeData).toHaveBeenCalled();
+    });
+
+    const passedSignal = vi.mocked(fetchYouTubeData).mock.calls[0][1]?.signal;
+    expect(passedSignal).toBeInstanceOf(AbortSignal);
+    expect(passedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(passedSignal?.aborted).toBe(true);
+  });
+
+  it("does not throw when the initial load resolves after unmount", async () => {
+    let resolveFetch!: (value: {
+      videos: FeedItem[];
+      streams: FeedItem[];
+      fromCache: boolean;
+    }) => void;
+    vi.mocked(fetchYouTubeData).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { unmount } = renderHook(() => useYouTubeData(IDS_PUB1));
+
+    await waitFor(() => {
+      expect(fetchYouTubeData).toHaveBeenCalled();
+    });
+    unmount();
+
+    resolveFetch({ videos: [ITEM], streams: [], fromCache: false });
+    await new Promise((r) => setTimeout(r, 0));
   });
 });

@@ -9,8 +9,10 @@ import { useContainerWidth } from "@/hooks/useContainerWidth";
 
 export function LiveStreamsWidget({
   publisherIds,
+  bare,
 }: {
   publisherIds: string[];
+  bare?: boolean;
 }) {
   const {
     streams,
@@ -35,6 +37,7 @@ export function LiveStreamsWidget({
   return (
     <DashboardCard
       title="Élők"
+      bare={bare}
       actions={
         <div className="flex items-center gap-2">
           {totalPages > 1 && (

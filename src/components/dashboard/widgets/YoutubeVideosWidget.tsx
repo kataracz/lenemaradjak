@@ -9,8 +9,10 @@ import { useContainerWidth } from "@/hooks/useContainerWidth";
 
 export function YoutubeVideosWidget({
   publisherIds,
+  bare,
 }: {
   publisherIds: string[];
+  bare?: boolean;
 }) {
   const { videos, loading, error, refresh, refreshDisabled } =
     useYouTubeData(publisherIds);
@@ -27,6 +29,7 @@ export function YoutubeVideosWidget({
   return (
     <DashboardCard
       title="Videók"
+      bare={bare}
       actions={
         <div className="flex items-center gap-2">
           {totalPages > 1 && (

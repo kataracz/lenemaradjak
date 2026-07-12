@@ -1,8 +1,14 @@
 import * as React from "react";
 import { publishers } from "@/lib/publisher-config";
 import { useCooldown } from "@/hooks/useCooldown";
-import { fetchYouTubeData } from "@/lib/fetchers/youtube";
+import { fetchYouTubeData, isYouTubeQuotaError } from "@/lib/fetchers/youtube";
 import type { FeedItem } from "@/types/dashboard";
+
+function errorMessage(err: unknown): string {
+  if (isYouTubeQuotaError(err))
+    return "Elértük a YouTube napi API-kvótáját, próbáld újra később.";
+  return err instanceof Error ? err.message : String(err);
+}
 
 export function useYouTubeData(publisherIds: string[]): {
   videos: FeedItem[];
@@ -17,6 +23,7 @@ export function useYouTubeData(publisherIds: string[]): {
   const [streams, setStreams] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const controllerRef = React.useRef<AbortController | null>(null);
 
   const filteredPublishers = React.useMemo(
     () => publishers.filter((p) => publisherIds.includes(p.id)),
@@ -31,33 +38,44 @@ export function useYouTubeData(publisherIds: string[]): {
 
   const load = React.useCallback(
     async (force = false) => {
+      const controller = controllerRef.current;
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchYouTubeData(filteredPublishers, { force });
+        const result = await fetchYouTubeData(filteredPublishers, {
+          force,
+          signal: controller?.signal,
+        });
+        if (controller?.signal.aborted) return;
         setVideos(result.videos);
         setStreams(result.streams);
         setError(result.partialError ?? null);
         if (result.fromCache) resetCooldown();
       } catch (err) {
+        if (controller?.signal.aborted) return;
         console.error(err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
         setVideos([]);
         setStreams([]);
       } finally {
-        setLoading(false);
+        if (!controller?.signal.aborted) {
+          setLoading(false);
+        }
       }
     },
     [filteredPublishers, resetCooldown],
   );
 
   React.useEffect(() => {
+    const controller = new AbortController();
+    controllerRef.current = controller;
     triggerRefresh();
     const timerId = window.setTimeout(() => {
       void load();
     }, 0);
     return () => {
       window.clearTimeout(timerId);
+      controller.abort();
     };
   }, [load, triggerRefresh]);
 

@@ -26,6 +26,31 @@ vi.mock("@/components/dashboard/feed-item-card", () => ({
     <div data-testid="feed-item">{item.title}</div>
   ),
 }));
+vi.mock("@/components/dashboard/pagination-controls", () => ({
+  PaginationControls: ({
+    page,
+    totalPages,
+    onPrev,
+    onNext,
+  }: {
+    page: number;
+    totalPages: number;
+    onPrev: () => void;
+    onNext: () => void;
+  }) => (
+    <div data-testid="pagination">
+      <button data-testid="prev-page" onClick={onPrev}>
+        prev
+      </button>
+      <span data-testid="page-indicator">
+        {page}/{totalPages}
+      </span>
+      <button data-testid="next-page" onClick={onNext}>
+        next
+      </button>
+    </div>
+  ),
+}));
 
 import { useRSSFeed } from "@/hooks/useRSSFeed";
 import { ArticlesWidget } from "@/components/dashboard/widgets/ArticlesWidget";
@@ -89,6 +114,54 @@ describe("ArticlesWidget", () => {
     mockFeed({ refresh });
     render(<ArticlesWidget publisherIds={[]} />);
     fireEvent.click(screen.getByRole("button", { name: "Frissítés" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no pagination when items fit on one page", () => {
+    mockFeed({ items: [ITEM] });
+    render(<ArticlesWidget publisherIds={[]} />);
+    expect(screen.queryByTestId("pagination")).toBeNull();
+  });
+
+  it("shows pagination when items exceed page size", () => {
+    const manyItems = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `item${String(i)}`,
+      title: `Article ${String(i)}`,
+    }));
+    mockFeed({ items: manyItems });
+    render(<ArticlesWidget publisherIds={[]} />);
+    expect(screen.getByTestId("pagination")).toBeTruthy();
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
+    expect(screen.getAllByTestId("feed-item")).toHaveLength(10);
+  });
+
+  it("navigates to next page showing remaining items", () => {
+    const manyItems = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `item${String(i)}`,
+      title: `Article ${String(i)}`,
+    }));
+    mockFeed({ items: manyItems });
+    render(<ArticlesWidget publisherIds={[]} />);
+    fireEvent.click(screen.getByTestId("next-page"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("2/2");
+    expect(screen.getAllByTestId("feed-item")).toHaveLength(1);
+  });
+
+  it("resets to page 1 when refresh is called", () => {
+    const refresh = vi.fn();
+    const manyItems = Array.from({ length: 11 }, (_, i) => ({
+      ...ITEM,
+      id: `item${String(i)}`,
+      title: `Article ${String(i)}`,
+    }));
+    mockFeed({ items: manyItems, refresh });
+    render(<ArticlesWidget publisherIds={[]} />);
+    fireEvent.click(screen.getByTestId("next-page"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("2/2");
+    fireEvent.click(screen.getByText("Frissítés"));
+    expect(screen.getByTestId("page-indicator").textContent).toBe("1/2");
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 });
