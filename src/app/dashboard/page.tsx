@@ -78,6 +78,55 @@ const DRAG_CONFIG = {
 };
 const publisherOptions = [{ id: "all", name: "Összes kiadó" }, ...publishers];
 
+function DesktopDashboardGrid({
+  layouts,
+  filteredPublisherIds,
+  onLayoutChange,
+}: {
+  layouts: DashboardLayouts;
+  filteredPublisherIds: string[];
+  onLayoutChange: (_layout: Layout, allLayouts: DashboardLayouts) => void;
+}) {
+  const { width, containerRef, mounted } = useContainerWidth();
+
+  return (
+    <div ref={containerRef} className="rounded-3xl border border-muted/10">
+      {mounted && (
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          breakpoints={breakpoints}
+          cols={cols}
+          rowHeight={28}
+          margin={GRID_MARGIN}
+          containerPadding={GRID_CONTAINER_PADDING}
+          width={width}
+          dragConfig={DRAG_CONFIG}
+          onLayoutChange={onLayoutChange}
+        >
+          {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
+            const widgetDef = findWidgetDefinition(item.i);
+            if (!widgetDef) {
+              return null;
+            }
+
+            return (
+              <div
+                key={item.i}
+                className="rounded-3xl border border-muted/10 shadow-sm"
+              >
+                <WidgetErrorBoundary title={widgetDef.title}>
+                  <widgetDef.component publisherIds={filteredPublisherIds} />
+                </WidgetErrorBoundary>
+              </div>
+            );
+          })}
+        </ResponsiveGridLayout>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
   const { layouts, setLayouts, publisherFilter, setPublisherFilter } =
     useDashboardPreferences({
@@ -92,7 +141,6 @@ export default function Page() {
     return [publisherFilter];
   }, [publisherFilter]);
 
-  const { width, containerRef, mounted } = useContainerWidth();
   const isMobile = useMediaQuery(
     `(max-width: ${String(MOBILE_BREAKPOINT - 1)}px)`,
   );
@@ -141,45 +189,11 @@ export default function Page() {
             {isMobile ? (
               <MobileDashboardTabs publisherIds={filteredPublisherIds} />
             ) : (
-              <div
-                ref={containerRef}
-                className="rounded-3xl border border-muted/10"
-              >
-                {mounted && (
-                  <ResponsiveGridLayout
-                    className="layout"
-                    layouts={layouts}
-                    breakpoints={breakpoints}
-                    cols={cols}
-                    rowHeight={28}
-                    margin={GRID_MARGIN}
-                    containerPadding={GRID_CONTAINER_PADDING}
-                    width={width}
-                    dragConfig={DRAG_CONFIG}
-                    onLayoutChange={handleLayoutChange}
-                  >
-                    {(layouts.lg ?? defaultLayouts.lg ?? []).map((item) => {
-                      const widgetDef = findWidgetDefinition(item.i);
-                      if (!widgetDef) {
-                        return null;
-                      }
-
-                      return (
-                        <div
-                          key={item.i}
-                          className="rounded-3xl border border-muted/10 shadow-sm"
-                        >
-                          <WidgetErrorBoundary title={widgetDef.title}>
-                            <widgetDef.component
-                              publisherIds={filteredPublisherIds}
-                            />
-                          </WidgetErrorBoundary>
-                        </div>
-                      );
-                    })}
-                  </ResponsiveGridLayout>
-                )}
-              </div>
+              <DesktopDashboardGrid
+                layouts={layouts}
+                filteredPublisherIds={filteredPublisherIds}
+                onLayoutChange={handleLayoutChange}
+              />
             )}
           </div>
         </main>
