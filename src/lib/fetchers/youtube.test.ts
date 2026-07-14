@@ -77,7 +77,6 @@ function makeVideosResponse(
 
 describe("fetchYouTubeData", () => {
   beforeEach(() => {
-    vi.unstubAllEnvs();
     sessionStorage.clear();
     clearYouTubeCaches();
   });
@@ -88,17 +87,15 @@ describe("fetchYouTubeData", () => {
     vi.useRealTimers();
   });
 
-  it("returns empty arrays when VITE_YOUTUBE_API_KEY is not set", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "");
+  it("returns notConfigured and empty arrays when the proxy reports YouTube isn't set up", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeErrorResponse(501)));
     const result = await fetchYouTubeData([PUBLISHER]);
     expect(result.videos).toEqual([]);
     expect(result.streams).toEqual([]);
-    expect(result.fromCache).toBe(true);
+    expect(result.notConfigured).toBe(true);
   });
 
   it("returns correctly shaped videos from playlist + videos APIs", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makePlaylistResponse(["vid1", "vid2"]))
@@ -120,8 +117,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("puts live items in streams, not videos", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makePlaylistResponse(["liveVid", "normalVid"]))
@@ -142,8 +137,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("returns empty streams (does not throw) when no live streams found", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makePlaylistResponse(["vid1"]))
@@ -155,8 +148,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("returns cached result without a second fetch", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makePlaylistResponse(["vid1"]))
@@ -174,8 +165,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("deduplicates inflight parallel requests", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makePlaylistResponse(["vid1"]))
@@ -191,16 +180,12 @@ describe("fetchYouTubeData", () => {
   });
 
   it("throws when the playlist API returns a non-ok response", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeErrorResponse(403)));
 
     await expect(fetchYouTubeData([PUBLISHER])).rejects.toThrow("403");
   });
 
   it("throws a YouTubeQuotaError when the API reports quotaExceeded", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeQuotaErrorResponse()));
 
     await expect(fetchYouTubeData([PUBLISHER])).rejects.toBeInstanceOf(
@@ -209,8 +194,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("returns partialError when one publisher fails and another succeeds", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     const UPLOADS_1 = "UUM-1sd-cXSuCsfWp8QMY_OQ";
     const UPLOADS_2 = "UUEFpEvuosfPGlV1VyUF6QOA";
 
@@ -240,8 +223,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("sorts videos by publishedAt descending across multiple publishers", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
-
     // Pub1 uploads playlist: "UU" + CHANNEL_ID.slice(2)
     const UPLOADS_1 = "UUM-1sd-cXSuCsfWp8QMY_OQ";
     // Pub2 uploads playlist: "UU" + CHANNEL_ID_2.slice(2)
@@ -287,7 +268,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("cancels the 429 retry wait when the signal aborts, without retrying", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     vi.useFakeTimers();
 
     const mockFetch = vi.fn().mockResolvedValueOnce(make429Response(5));
@@ -308,7 +288,6 @@ describe("fetchYouTubeData", () => {
   });
 
   it("still retries and succeeds on 429 when not aborted", async () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     vi.useFakeTimers();
 
     const mockFetch = vi

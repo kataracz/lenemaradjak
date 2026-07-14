@@ -1,5 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createCacheStore } from "./cache-store.js";
+import { createCacheStore, isCacheableStatus } from "./cache-store.js";
+
+describe("isCacheableStatus", () => {
+  it("treats 2xx statuses as cacheable", () => {
+    expect(isCacheableStatus(200)).toBe(true);
+    expect(isCacheableStatus(204)).toBe(true);
+    expect(isCacheableStatus(299)).toBe(true);
+  });
+
+  it("treats non-2xx statuses as not cacheable", () => {
+    expect(isCacheableStatus(403)).toBe(false);
+    expect(isCacheableStatus(404)).toBe(false);
+    expect(isCacheableStatus(500)).toBe(false);
+    expect(isCacheableStatus(301)).toBe(false);
+    expect(isCacheableStatus(199)).toBe(false);
+  });
+});
 
 describe("createCacheStore (in-memory, no Redis client)", () => {
   let store;

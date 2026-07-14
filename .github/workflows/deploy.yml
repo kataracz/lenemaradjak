@@ -36,8 +36,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-        env:
-          VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
       - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -84,4 +82,4 @@ jobs:
             --max-instances 2 \
             --allow-unauthenticated \
             --set-env-vars "ALLOWED_ORIGIN=https://lenemaradjak.web.app,DEV_CONTACT=${{ secrets.DEV_CONTACT }}" \
-            --set-secrets "UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest"
+            --set-secrets "UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest"

@@ -25,7 +25,7 @@ export const publishers: PublisherConfig[] = [
   {
     id: "magyarhang",
     name: "Magyar Hang",
-    articleFeedUrl: "https://magyarhang.org/feed/",
+    articleFeedUrl: "https://hang.hu/rss",
     youtubeChannelHandle: "@magyarhang",
     youtubeChannelId: "UCnlMwO6KqQQKn7byzHRbvlQ",
   },

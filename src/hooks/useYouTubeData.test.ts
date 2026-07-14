@@ -42,6 +42,7 @@ describe("useYouTubeData", () => {
       videos: [ITEM],
       streams: [],
       fromCache: false,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -89,6 +90,7 @@ describe("useYouTubeData", () => {
       videos: [],
       streams: [],
       fromCache: false,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -107,6 +109,7 @@ describe("useYouTubeData", () => {
       videos: [],
       streams: [],
       fromCache: false,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -124,6 +127,7 @@ describe("useYouTubeData", () => {
       streams: [],
       partialError: "Egy YouTube csatorna nem töltődött be.",
       fromCache: false,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -140,6 +144,7 @@ describe("useYouTubeData", () => {
       videos: [],
       streams: [],
       fromCache: false,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -158,6 +163,7 @@ describe("useYouTubeData", () => {
       videos: [],
       streams: [],
       fromCache: true,
+      notConfigured: false,
     });
 
     const { result } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -174,6 +180,7 @@ describe("useYouTubeData", () => {
       videos: [],
       streams: [],
       fromCache: false,
+      notConfigured: false,
     });
 
     const { unmount } = renderHook(() => useYouTubeData(IDS_PUB1));
@@ -196,6 +203,7 @@ describe("useYouTubeData", () => {
       videos: FeedItem[];
       streams: FeedItem[];
       fromCache: boolean;
+      notConfigured: boolean;
     }) => void;
     vi.mocked(fetchYouTubeData).mockReturnValue(
       new Promise((resolve) => {
@@ -210,7 +218,12 @@ describe("useYouTubeData", () => {
     });
     unmount();
 
-    resolveFetch({ videos: [ITEM], streams: [], fromCache: false });
+    resolveFetch({
+      videos: [ITEM],
+      streams: [],
+      fromCache: false,
+      notConfigured: false,
+    });
     await new Promise((r) => setTimeout(r, 0));
   });
 });

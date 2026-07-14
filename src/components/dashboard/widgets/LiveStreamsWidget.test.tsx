@@ -81,6 +81,7 @@ function mockFeed(
     refresh: vi.fn(),
     refreshDisabled: false,
     hasConfiguredChannels: true,
+    notConfigured: false,
     ...overrides,
   });
 }
@@ -88,7 +89,6 @@ function mockFeed(
 describe("LiveStreamsWidget", () => {
   afterEach(() => {
     cleanup();
-    vi.unstubAllEnvs();
   });
 
   beforeEach(() => {
@@ -117,15 +117,13 @@ describe("LiveStreamsWidget", () => {
     expect(screen.getByText("YouTube API failed")).toBeTruthy();
   });
 
-  it("shows not-configured message when VITE_YOUTUBE_API_KEY is absent", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", ""); // clear any value from .env
-    mockFeed({ hasConfiguredChannels: true });
+  it("shows not-configured message when notConfigured is true", () => {
+    mockFeed({ hasConfiguredChannels: true, notConfigured: true });
     render(<LiveStreamsWidget publisherIds={[]} />);
-    expect(screen.getByText(/VITE_YOUTUBE_API_KEY/)).toBeTruthy();
+    expect(screen.getByText(/YOUTUBE_API_KEY/)).toBeTruthy();
   });
 
   it("shows no-live-streams message when key is set and publishers have channels but no streams", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     mockFeed({ hasConfiguredChannels: true });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.getByText(/nem találtunk élő közvetítést/)).toBeTruthy();
@@ -144,21 +142,18 @@ describe("LiveStreamsWidget", () => {
   });
 
   it("shows not-configured message when publishers have no channel info", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     mockFeed({ hasConfiguredChannels: false });
     render(<LiveStreamsWidget publisherIds={[]} />);
-    expect(screen.getByText(/VITE_YOUTUBE_API_KEY/)).toBeTruthy();
+    expect(screen.getByText(/YOUTUBE_API_KEY/)).toBeTruthy();
   });
 
   it("shows no pagination when streams fit on one page", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     mockFeed({ streams: [LIVE_ITEM] });
     render(<LiveStreamsWidget publisherIds={[]} />);
     expect(screen.queryByTestId("pagination")).toBeNull();
   });
 
   it("shows pagination when streams exceed page size", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     const manyStreams = Array.from({ length: 11 }, (_, i) => ({
       ...LIVE_ITEM,
       id: `live${String(i)}`,
@@ -172,7 +167,6 @@ describe("LiveStreamsWidget", () => {
   });
 
   it("resets to page 1 when refresh is called", () => {
-    vi.stubEnv("VITE_YOUTUBE_API_KEY", "test-key");
     const refresh = vi.fn();
     const manyStreams = Array.from({ length: 11 }, (_, i) => ({
       ...LIVE_ITEM,

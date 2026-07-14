@@ -1,6 +1,7 @@
 import * as React from "react";
-import { publishers } from "@/lib/publisher-config";
 import { useCooldown } from "@/hooks/useCooldown";
+import { useFilteredPublishers } from "@/hooks/useFilteredPublishers";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { fetchYouTubeData, isYouTubeQuotaError } from "@/lib/fetchers/youtube";
 import type { FeedItem } from "@/types/dashboard";
 
@@ -18,17 +19,16 @@ export function useYouTubeData(publisherIds: string[]): {
   refresh: () => void;
   refreshDisabled: boolean;
   hasConfiguredChannels: boolean;
+  notConfigured: boolean;
 } {
   const [videos, setVideos] = React.useState<FeedItem[]>([]);
   const [streams, setStreams] = React.useState<FeedItem[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [notConfigured, setNotConfigured] = React.useState(false);
   const controllerRef = React.useRef<AbortController | null>(null);
 
-  const filteredPublishers = React.useMemo(
-    () => publishers.filter((p) => publisherIds.includes(p.id)),
-    [publisherIds],
-  );
+  const filteredPublishers = useFilteredPublishers(publisherIds);
 
   const {
     disabled: refreshDisabled,
@@ -50,6 +50,7 @@ export function useYouTubeData(publisherIds: string[]): {
         setVideos(result.videos);
         setStreams(result.streams);
         setError(result.partialError ?? null);
+        setNotConfigured(result.notConfigured);
         if (result.fromCache) resetCooldown();
       } catch (err) {
         if (controller?.signal.aborted) return;
@@ -69,19 +70,12 @@ export function useYouTubeData(publisherIds: string[]): {
   React.useEffect(() => {
     const controller = new AbortController();
     controllerRef.current = controller;
-    triggerRefresh();
-    const timerId = window.setTimeout(() => {
-      void load();
-    }, 0);
     return () => {
-      window.clearTimeout(timerId);
       controller.abort();
     };
-  }, [load, triggerRefresh]);
+  }, [load]);
 
-  const refresh = React.useCallback(() => {
-    if (triggerRefresh()) void load(true);
-  }, [triggerRefresh, load]);
+  const refresh = useAutoRefresh(load, triggerRefresh);
 
   const hasConfiguredChannels = React.useMemo(
     () =>
@@ -99,5 +93,6 @@ export function useYouTubeData(publisherIds: string[]): {
     refresh,
     refreshDisabled,
     hasConfiguredChannels,
+    notConfigured,
   };
 }
