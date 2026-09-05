@@ -8,6 +8,16 @@ updates:
       npm_and_yarn:
         patterns:
           - "*"
+    ignore:
+      # typescript-eslint caps its peer range at "typescript >=4.8.4 <6.1.0"
+      # (8.69.0, the latest release — no published version, canary included,
+      # supports TypeScript 7 yet). Grouping a typescript major into the weekly
+      # PR produces a lockfile npm cannot install: `npm ci` fails with ERESOLVE,
+      # which breaks both the CI job and the Trivy job's `docker build`.
+      # Drop this entry once typescript-eslint ships TypeScript 7 support.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
